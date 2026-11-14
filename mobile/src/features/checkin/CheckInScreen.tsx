@@ -77,7 +77,7 @@ function MoodShape({ mood, onChange }: { mood: Score; onChange: (s: Score) => vo
 }
 
 const Ends = ({ a, b }: { a: string; b: string }) => (
-  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
     <Text style={font('small', color.muted)}>{a}</Text>
     <Text style={font('small', color.muted)}>{b}</Text>
   </View>
@@ -118,17 +118,17 @@ export function CheckInScreen() {
           <MoodShape mood={mood} onChange={setMood} />
         </Card>
 
-        <View style={{ gap: 8 }}>
+        <Card pad={16} style={{ gap: 12 }}>
           <Text style={font('section')}>Estrés</Text>
           <SegmentedTabs tabs={SCORES.map((s) => ({ key: String(s), label: String(s) }))} active={String(stress)} onChange={(k) => setStress(Number(k) as Score)} />
           <Ends a="Tranquilo" b="Muy alto" />
-        </View>
+        </Card>
 
-        <View style={{ gap: 8 }}>
+        <Card pad={16} style={{ gap: 12 }}>
           <Text style={font('section')}>Perspectiva de la misión</Text>
           <SegmentedTabs tabs={SCORES.map((s) => ({ key: String(s), label: String(s) }))} active={String(outlook)} onChange={(k) => setOutlook(Number(k) as Score)} />
           <Ends a="Pesimista" b="Optimista" />
-        </View>
+        </Card>
 
         <FormSection title="Lo que quieras contar">
           <LabeledRow label="Molestias">
