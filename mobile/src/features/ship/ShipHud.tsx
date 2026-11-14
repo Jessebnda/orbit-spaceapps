@@ -76,7 +76,11 @@ export function ShipHud() {
           <Icon name={overall === 'ok' ? 'checkmark.circle.fill' : overall === 'watch' ? 'exclamationmark.triangle.fill' : 'xmark.octagon.fill'} size={20} color={color.status[overall]} />
           <Text style={font('title', overall === 'ok' ? color.text : color.status[overall])}>{overall === 'ok' ? 'Todo en rango' : STATUS_LABEL[overall]}</Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+          <Press label={talking ? 'Cerrar chat con Orbi' : 'Hablar con Orbi'} haptic="light" onPress={() => setTalking((t) => !t)} style={{ height: 40, paddingLeft: 4, paddingRight: 12, borderRadius: radius.full, backgroundColor: talking ? color.accent : color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 32, height: 32 }}><Creature size={32} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
+            <Text style={font('small', talking ? color.onAccent : color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
+          </Press>
           {LINKS.map((l) => (
             <View key={l.key} style={{ alignItems: 'center', gap: 2 }} accessibilityLabel={`${l.label} ${connected[l.key] ? 'conectada' : 'sin conexión'}`}>
               <Icon name="antenna.radiowaves.left.and.right" size={18} color={connected[l.key] ? color.status.ok : color.faint} />
@@ -91,8 +95,9 @@ export function ShipHud() {
           {[slots.slice(0, 3), slots.slice(3, 6)].map((row, i) => <View key={i} style={{ flex: 1, flexDirection: 'row' }}>{row.map(cell)}</View>)}
         </View>
 
+        <View style={{ flex: 1.4, gap: 8 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
         {talking ? <ShipChat onClose={() => setTalking(false)} /> : (
-        <View style={{ flex: 1.2, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 14, gap: 8, justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 14, gap: 8, justifyContent: 'space-between' }}>
           {current ? (
             <>
               <View style={{ gap: 6 }}>
@@ -120,12 +125,7 @@ export function ShipHud() {
         </View>
         )}
 
-        <View style={{ flex: 0.8, justifyContent: 'flex-end', alignItems: 'center', gap: 8, minHeight: 0 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
-          <Press label={talking ? 'Cerrar chat con Orbi' : 'Hablar con Orbi'} haptic="light" onPress={() => setTalking((t) => !t)} style={{ alignItems: 'center', gap: 2 }}>
-            <View style={{ height: 56 }}><Creature size={56} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
-            <Text style={font('small', color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
-          </Press>
-          <SosButton large width={col3} />
+        <SosButton large width={col3} />
         </View>
       </View>
     </View>
@@ -139,7 +139,7 @@ function ShipChat({ onClose }: { onClose: () => void }) {
   const { text, setText, busy, error, send } = usePetChat();
   const list = useRef<FlatList>(null);
   return (
-    <View style={{ flex: 1.2, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 10, gap: 8 }}>
+    <View style={{ flex: 1, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 10, gap: 8 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={font('caption', color.muted)}>Orbi</Text>
         <Press label="Cerrar chat" onPress={onClose} style={{ minHeight: 32, justifyContent: 'center', paddingHorizontal: 6 }}><Text style={font('small', color.accentText)}>Cerrar</Text></Press>
