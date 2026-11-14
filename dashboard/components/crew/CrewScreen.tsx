@@ -46,10 +46,10 @@ export function CrewScreen({ id }: { id: string }) {
 
   const status = worstStatus(member.metrics);
   const victim = emergencies.some((e) => !e.resolved && e.victimId === id);
-  const series = (k: MetricKey): Point[] =>
-    (history.data ?? []).flatMap((h) => {
-      const v = h.metrics[k];
-      return v == null ? [] : [{ ts: h.ts, v }];
+  const seriesOf = (h?: HistoryPoint[]) => (k: MetricKey): Point[] =>
+    (h ?? []).flatMap((p) => {
+      const v = p.metrics[k];
+      return v == null ? [] : [{ ts: p.ts, v }];
     });
 
   return (
@@ -72,7 +72,7 @@ export function CrewScreen({ id }: { id: string }) {
       </header>
 
       <div className="space-y-6">
-        <CrewVitals metrics={member.metrics} series={series} error={history.error} />
+        <CrewVitals metrics={member.metrics} series24={seriesOf(history.data)} series14={seriesOf(history14.data)} now={now} error={history.error} />
         <CommsPanel crewId={id} records={comms.data?.records ?? []} names={names} now={now} anomalies={member.comms.anomalies} error={comms.error} loading={!comms.data && !comms.error} />
         <CheckInPanel checkIn={member.lastCheckIn} stats={member.stats} now={now} />
         <BehaviourPanel

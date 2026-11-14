@@ -2,22 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { THRESHOLDS, formatMetric, statusOf, type CrewSnapshot, type Emergency, type MetricKey } from "@orbit/shared";
-import { TriangleAlert } from "lucide-react";
+import { GOALS, METRIC_META, STATUS_LABEL, THRESHOLDS, formatMetric, statusOf, type CrewSnapshot, type Emergency, type MetricKey } from "@orbit/shared";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, TriangleAlert } from "lucide-react";
+import { PaceRing } from "@/components/ui/PaceRing";
+import { RangeBar } from "@/components/ui/RangeBar";
+import { trendOf } from "@/lib/domain/vitals";
 import { Avatar } from "@/components/ui/Avatar";
 import { Segmented } from "@/components/ui/Segmented";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { StatusMark } from "@/components/ui/StatusMark";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { VitalStrip } from "@/components/crew/VitalStrip";
-import { useCrewSpark } from "@/components/crew/useCrewSpark";
+import { useCrewBase, useCrewSpark } from "@/components/crew/useCrewSpark";
 import { fmtAgo } from "@/lib/domain/format";
 import { statusColor } from "@/lib/theme";
 import { Users } from "lucide-react";
 
 type View = "cards" | "table";
 const RANK = { critical: 0, watch: 1, ok: 2 } as const;
-const HR_BAND: [number, number] = [THRESHOLDS.hr[1], THRESHOLDS.hr[2]];
 
 function Mood({ v }: { v?: number }) {
   return (
@@ -33,31 +34,96 @@ function CardAlerts({ n }: { n: number }) {
   ) : <span>Sin alertas</span>;
 }
 
+const STRIP: { id: string; k: MetricKey; label: string }[] = [
+  { id: "hr", k: "hr", label: "Ritmo" },
+  { id: "spo2", k: "spo2", label: "SpO₂" },
+  { id: "temp", k: "temp", label: "Temp." },
+  { id: "bp", k: "bpSys", label: "Presión" },
+  { id: "resp", k: "resp", label: "Resp." },
+];
+const UNIT: Partial<Record<MetricKey, string>> = { hr: "lpm", spo2: "%", temp: "°C", bpSys: "mmHg", resp: "rpm" };
+const num = (k: MetricKey, v?: number) => (v == null ? "—" : formatMetric(k, v).replace(/ [^\d]+$/, ""));
+
+function Trend({ k, v, base }: { k: MetricKey; v?: number; base?: number }) {
+  const t = v == null ? undefined : trendOf(k, v, base);
+  if (!t) return <span className="t-micro block h-3.5" />;
+  const G = t.dir === "up" ? ArrowUpRight : t.dir === "down" ? ArrowDownRight : ArrowRight;
+  return <span className="t-micro flex h-3.5 items-center gap-0.5 text-muted"><G size={11} aria-hidden />{t.dir === "flat" ? "igual" : `${t.delta > 0 ? "+" : "−"}${Math.abs(t.delta).toFixed(k === "temp" ? 1 : 0)}`}</span>;
+}
+
 function CrewCard({ c, now, victim }: { c: CrewSnapshot; now: number; victim: boolean }) {
   const spark = useCrewSpark(c.member.id);
-  const hr = spark("hr");
-  const hrStatus = statusOf("hr", c.metrics.hr, now);
+  const { base, nights } = useCrewBase(c.member.id, now);
+  const [sel, setSel] = useState<string>("hr");
+  const selK = STRIP.find((s) => s.id === sel)!.k;
+  const selStatus = statusOf(selK, c.metrics[selK], now);
+  const [, wl, wh] = THRESHOLDS[selK];
+  const off = !c.online;
+  const sleeps = nights.filter((n): n is number => n != null);
   return (
-    <Link href={`/crew/${c.member.id}`} className="card-hover block rounded-md bg-surface p-4 transition-colors">
-      <div className="flex h-10 items-center gap-2.5">
-        <Avatar name={c.member.name} size={40} status={c.status} online={c.online} emergency={victim} />
-        <div className="min-w-0 flex-1">
-          <p className="t-heading truncate">{c.member.name}</p>
-          <p className="t-small truncate text-muted">{c.online ? c.member.role : `visto ${fmtAgo(c.lastSeen, now)}`}</p>
-        </div>
+    <article className={`rounded-md bg-surface p-5 ${off ? "opacity-90" : ""}`} aria-label={c.member.name}>
+      <div className="flex h-10 items-center gap-3">
+        <Link href={`/crew/${c.member.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+          <Avatar name={c.member.name} size={40} status={c.status} online={c.online} emergency={victim} />
+          <span className="min-w-0">
+            <span className="t-heading block truncate">{c.member.name}</span>
+            <span className="t-small block truncate text-muted">{c.online ? c.member.role : `visto ${fmtAgo(c.lastSeen, now)}`}</span>
+          </span>
+        </Link>
         {victim ? <StatusMark variant="pill" status="critical" label="En emergencia" /> : <StatusMark variant="pill" status={c.status} />}
       </div>
-      <div className="mt-4"><VitalStrip metrics={c.metrics} now={now} offline={!c.online} /></div>
-      <div className="mt-3 h-10">
-        <div className="t-micro flex justify-between text-ink3"><span>FC · 6 h</span><span className="t-small tabular-nums text-ink">{formatMetric("hr", c.metrics.hr)}</span></div>
-        <Sparkline values={hr} width={236} height={22} band={HR_BAND} lastColor={hrStatus === "ok" ? undefined : statusColor[hrStatus]} />
+
+      <div className="mt-5 grid grid-cols-5 gap-3">
+        {STRIP.map((s) => {
+          const v = off ? undefined : c.metrics[s.k];
+          const st = statusOf(s.k, v, now);
+          return (
+            <button key={s.id} type="button" aria-pressed={sel === s.id} onClick={() => setSel(s.id)} className={`-m-1 rounded-sm p-1 text-left ${sel === s.id ? "bg-white/[0.06]" : "row-hover"}`}>
+              <span className="t-micro block text-muted">{s.label}</span>
+              <span className="mt-0.5 flex items-baseline gap-1" style={{ color: st === "ok" ? undefined : statusColor[st] }}>
+                <span className={`${s.id === "bp" ? "text-[22px] leading-8" : "t-figure"} font-semibold tabular-nums`}>{s.id === "bp" ? `${num("bpSys", v)}/${num("bpDia", off ? undefined : c.metrics.bpDia)}` : num(s.k, v)}</span>
+                {st !== "ok" && <StatusMark status={st} variant="dot" />}
+              </span>
+              <span className="t-micro block text-ink3">{UNIT[s.k]}</span>
+              <div className="mt-1"><RangeBar metric={s.k} value={v} base={base(s.k)} now={now} label={`${METRIC_META[s.k].label} ${num(s.k, v)} ${UNIT[s.k]}, ${STATUS_LABEL[st].toLowerCase()}`} /></div>
+              <Trend k={s.k} v={v} base={base(s.k)} />
+            </button>
+          );
+        })}
       </div>
-      <div className="t-small mt-3 flex h-6 items-center justify-between border-t-[0.5px] border-hairline pt-3 text-muted">
-        <span>Sueño <b className="font-semibold text-ink tabular-nums">{c.metrics.sleep != null ? formatMetric("sleep", c.metrics.sleep) : "—"}</b></span>
-        <Mood v={c.lastCheckIn?.mood} />
-        <CardAlerts n={c.comms.anomalies.length} />
+
+      <div className="mt-4">
+        <div className="t-micro mb-1 flex justify-between text-ink3"><span>{METRIC_META[selK].label} · 6 h</span><span>normal {wl}–{wh} {UNIT[selK]}</span></div>
+        <Sparkline values={spark(selK)} height={48} band={[wl, wh]} lastColor={selStatus === "ok" ? undefined : statusColor[selStatus]} label={`Tendencia de ${METRIC_META[selK].label} en 6 horas`} />
       </div>
-    </Link>
+
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        {(["activity", "kcal", "water"] as MetricKey[]).map((k) => {
+          const v = off ? undefined : c.metrics[k];
+          return (
+            <div key={k} className="flex items-center gap-2.5">
+              <PaceRing metric={k} value={v} now={now} label={`${METRIC_META[k].label} ${num(k, v)} de ${GOALS[k]} ${METRIC_META[k].unit}`} />
+              <span className="min-w-0">
+                <span className="t-micro block truncate text-muted">{METRIC_META[k].label} · {METRIC_META[k].unit}</span>
+                <span className="t-small block whitespace-nowrap tabular-nums">{num(k, v)}<span className="text-ink3">/{GOALS[k]}</span></span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex h-7 items-center justify-between border-t-[0.5px] border-hairline pt-4 text-muted t-small">
+        <span className="flex items-center gap-3">
+          <span>Sueño <b className="font-semibold text-ink tabular-nums">{c.metrics.sleep != null ? formatMetric("sleep", c.metrics.sleep) : "—"}</b></span>
+          <span className="flex h-5 items-end gap-[3px]" role="img" aria-label={sleeps.length ? `Sueño de las últimas noches: ${sleeps.map((n) => n.toFixed(1)).join(", ")} horas` : "Sin historial de sueño"}>
+            {nights.map((n, i) => (
+              <span key={i} className="w-1.5 rounded-t-[2px]" style={{ height: n == null ? 3 : Math.max(3, Math.min(20, (n / 9) * 20)), background: n == null ? "var(--t-raised)" : n < 4 ? statusColor.critical : n < 6 ? statusColor.watch : "var(--t-accent)" }} />
+            ))}
+          </span>
+        </span>
+        <span className="flex items-center gap-4"><Mood v={c.lastCheckIn?.mood} /><CardAlerts n={c.comms.anomalies.length} /></span>
+      </div>
+    </article>
   );
 }
 

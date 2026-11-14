@@ -8,12 +8,10 @@ import { Card, Section } from '../../components/ui/FormSection';
 import { FeedRow } from '../../components/ui/FeedRow';
 import { Ring } from '../../components/ui/Ring';
 import { FormSection } from '../../components/ui/FormSection';
-import { StatusMark } from '../../components/ui/StatusMark';
 import { useNavigation } from '@react-navigation/native';
 import { AchievementsGrid } from './AchievementsGrid';
 import { ExplorationLog } from './ExplorationLog';
 import { InsightCard } from './InsightCard';
-import { Creature } from '../pet/Creature';
 
 const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
@@ -85,4 +83,3 @@ export function ProfileScreen() {
     </ScrollView>
   );
 }
-void StatusMark; void Creature;

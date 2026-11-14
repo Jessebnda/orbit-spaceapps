@@ -56,7 +56,7 @@ export function CommsChart({ crewId, records, names, now, days = 14 }: { crewId:
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
             <CartesianGrid horizontal vertical={false} stroke={chart.grid} />
             <XAxis dataKey="day" tick={{ ...tickStyle, fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
-            <YAxis tick={{ ...tickStyle, fontSize: 11 }} tickLine={false} axisLine={false} width={44} ticks={ticks} domain={[0, ticks[ticks.length - 1]]} tickFormatter={(v: number) => `${v} min`} />
+            <YAxis tick={{ ...tickStyle, fontSize: 11 }} tickLine={false} axisLine={false} width={32} ticks={ticks} domain={[0, ticks[ticks.length - 1]]} />
             <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "#fff", fillOpacity: 0.05 }} formatter={(v, n) => [`${v} min`, n]} />
             <ReferenceLine y={mean} stroke="#8E8E93" strokeDasharray="3 3" label={{ value: `media ${Math.round(mean)} min`, position: "insideTopRight", fill: "#8E8E93", fontSize: 11 }} />
             {peers.map((p) => (

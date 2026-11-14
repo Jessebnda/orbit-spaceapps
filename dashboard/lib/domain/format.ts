@@ -29,3 +29,22 @@ export function actionChip(a: Action) {
     .join(" · ");
   return args ? `${a.tool} → ${args}` : a.tool;
 }
+
+const TOOL_TEXT: Record<string, { glyph: "send" | "check" | "wrench"; text: (a: Action, who: (id: string) => string) => string }> = {
+  trigger_protocol: { glyph: "send", text: (a, who) => `Protocolo enviado a ${who(String(a.args.crewId))}: ${String(a.args.protocolId).replace(/_/g, " ")}` },
+  create_protocol: { glyph: "send", text: (a, who) => `Protocolo nuevo para ${who(String(a.args.crewId))}: ${String(a.args.title ?? "")}` },
+  resolve_emergency: { glyph: "check", text: () => "Emergencia marcada como resuelta" },
+  get_crew_overview: { glyph: "wrench", text: () => "Consultó el estado de la tripulación" },
+  get_member_history: { glyph: "wrench", text: (a, who) => `Consultó el histórico de ${who(String(a.args.crewId))}` },
+  get_comms: { glyph: "wrench", text: (a, who) => `Consultó la comunicación de ${who(String(a.args.crewId))}` },
+  get_behavior_insights: { glyph: "wrench", text: (a, who) => `Analizó el comportamiento de ${who(String(a.args.crewId))}` },
+  search_knowledge: { glyph: "wrench", text: () => "Buscó en la base de conocimiento" },
+  list_protocols: { glyph: "wrench", text: () => "Consultó la biblioteca de protocolos" },
+};
+
+/** Readable Spanish line + glyph kind for a tool call. */
+export function actionLine(a: Action, who: (id: string) => string) {
+  const t = TOOL_TEXT[a.tool];
+  const failed = typeof a.result === "string" && /"error"/.test(a.result);
+  return { glyph: t?.glyph ?? "wrench", text: t ? t.text(a, who) : a.tool, failed };
+}

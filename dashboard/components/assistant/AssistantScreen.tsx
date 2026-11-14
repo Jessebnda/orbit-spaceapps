@@ -1,115 +1,157 @@
 "use client";
 
-import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { CircleCheck, LoaderCircle, Moon, Send, Square, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ArrowUp, ArrowUpRight, CheckCheck, CircleCheck, LoaderCircle, Moon, Send, Square, TriangleAlert, Wrench, type LucideIcon } from "lucide-react";
 import { Markdown } from "@/components/assistant/Markdown";
 import { useChat } from "@/components/assistant/useChat";
-import { actionChip } from "@/lib/domain/format";
+import { Monogram } from "@/components/shell/Nav";
+import { LedgerList, LedgerRow } from "@/components/ui/LedgerRow";
+import { actionLine } from "@/lib/domain/format";
 import { useApi } from "@/lib/services/useApi";
+import { useHub } from "@/lib/services/useHub";
 import { type LlmState } from "@/lib/services/hub";
 
-// Wording for the hub's model state, polled while this screen is mounted.
-const LLM: Record<LlmState["state"], { text: string; Icon: LucideIcon; spin: boolean }> = {
-  off: { text: "Dormido · se cargará al preguntar", Icon: Moon, spin: false },
-  starting: { text: "Cargando modelo…", Icon: LoaderCircle, spin: true },
-  ready: { text: "Listo", Icon: CircleCheck, spin: false },
+const LLM: Record<LlmState["state"], { text: string; Icon: LucideIcon; spin: boolean; tone: string }> = {
+  off: { text: "Dormido · se carga al preguntar", Icon: Moon, spin: false, tone: "" },
+  starting: { text: "Cargando modelo…", Icon: LoaderCircle, spin: true, tone: "" },
+  ready: { text: "Listo", Icon: CircleCheck, spin: false, tone: "text-[#30D158]" },
 };
+const GLYPH = { send: Send, check: CheckCheck, wrench: Wrench };
 
 export function AssistantScreen() {
   const llm = useApi<LlmState>("/api/llm", 5000);
   const chat = useChat();
+  const { crew } = useHub();
   const [input, setInput] = useState("");
+  const list = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+  const who = (id: string) => crew.find((c) => c.member.id === id)?.member.name ?? id;
+  const watch = crew.find((c) => c.status === "watch");
 
-  function submit(e?: FormEvent) {
+  // Auto-scroll to the newest message unless the user scrolled up.
+  useEffect(() => {
+    const el = list.current;
+    if (el && stick.current) el.scrollTo({ top: el.scrollHeight });
+  }, [chat.messages, chat.busy]);
+
+  function submit(e?: FormEvent, text = input) {
     e?.preventDefault();
-    const text = input.trim();
-    if (!text) return;
+    const t = text.trim();
+    if (!t || chat.busy) return;
     setInput("");
-    chat.send(text);
+    stick.current = true;
+    chat.send(t);
   }
-
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
-  }
-
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+  };
   const status = llm.data ? LLM[llm.data.state] : undefined;
+  const suggestions = [
+    "¿Quién está fuera de rango ahora?",
+    watch ? `Envía respiración cuadrada a ${watch.member.name}` : "Resume el estado de la tripulación",
+    "Resume el sueño de la tripulación",
+  ];
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="mac-toolbar flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title font-bold tracking-[-0.3px]">Asistente</h1>
-          <p className="mt-1 text-small text-muted">Modelo local en este equipo. Puede actuar: enviar protocolos o resolver emergencias.</p>
-        </div>
-        <p className="flex items-center gap-1.5 text-caption text-muted" aria-live="polite">
+    <div className="mx-auto flex h-[calc(100dvh-48px)] max-w-[720px] flex-col">
+      <header className="flex shrink-0 items-center justify-between gap-3 pb-4">
+        <h1 className="t-title">Asistente</h1>
+        <p className="t-small flex items-center gap-1.5 text-muted" aria-live="polite">
           {status ? (
             <>
-              <status.Icon size={14} strokeWidth={1.5} className={status.spin ? "animate-spin motion-reduce:animate-none" : undefined} aria-hidden />
+              <status.Icon size={14} strokeWidth={1.5} className={`${status.tone} ${status.spin ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden />
               {status.text}
             </>
           ) : (
-            <span className="text-faint">{llm.error ? "Hub sin respuesta" : "Consultando estado…"}</span>
+            <span className="text-ink3">{llm.error ? "Hub sin respuesta" : "Consultando estado…"}</span>
           )}
         </p>
       </header>
 
-      <section className="space-y-5" aria-label="Conversación">
-        {chat.messages.length === 0 && <p className="text-small text-faint">Pregunta algo sobre la tripulación o pide una acción.</p>}
+      <div
+        ref={list}
+        onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}
+        className="flex-1 space-y-6 overflow-y-auto pb-4"
+        aria-live="polite"
+        aria-label="Conversación"
+      >
+        {chat.messages.length === 0 && (
+          <div className="pt-[8vh]">
+            <Monogram size={28} />
+            <h2 className="t-title mt-3">¿Qué necesitas saber?</h2>
+            <div className="mt-6">
+              <LedgerList label="Sugerencias" inset={16}>
+                {suggestions.map((s) => (
+                  <LedgerRow key={s} title={<span className="t-body font-normal">{s}</span>} trailing={<ArrowUpRight size={16} strokeWidth={1.5} className="text-muted" aria-hidden />} onClick={() => submit(undefined, s)} />
+                ))}
+              </LedgerList>
+            </div>
+          </div>
+        )}
         {chat.messages.map((m, i) =>
           m.role === "user" ? (
-            <div key={i} className="ml-auto max-w-[85%] rounded-lg bg-raised px-4 py-2.5 text-small whitespace-pre-wrap">
-              {m.content}
-            </div>
+            <div key={i} className="t-body ml-auto w-fit max-w-[80%] rounded-[18px] rounded-br-md bg-raised px-4 py-2 whitespace-pre-wrap">{m.content}</div>
           ) : (
-            <div key={i} className="max-w-[85%] space-y-2">
-              <Markdown>{m.content}</Markdown>
-              {m.actions && m.actions.length > 0 && (
-                <ul className="flex flex-wrap gap-1.5">
-                  {m.actions.map((a, j) => (
-                    <li key={j} className="rounded-sm border border-hairline px-2 py-0.5 font-mono text-caption text-muted">
-                      {actionChip(a)}
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div key={i} className="flex gap-3">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-raised"><Monogram size={16} /></span>
+              <div className="min-w-0 max-w-[64ch] flex-1 space-y-3">
+                <Markdown>{m.content}</Markdown>
+                {m.actions && m.actions.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {m.actions.map((a, j) => {
+                      const l = actionLine(a, who);
+                      const G = GLYPH[l.glyph];
+                      return (
+                        <li key={j} className="t-small flex h-10 items-center gap-2.5 rounded-md bg-surface px-3">
+                          <G size={14} strokeWidth={1.5} className="shrink-0 text-muted" aria-hidden />
+                          <span className="min-w-0 flex-1 truncate">{l.text}</span>
+                          <span className="flex shrink-0 items-center gap-1 text-muted">
+                            {l.failed ? <><TriangleAlert size={14} className="text-[#FF9F0A]" aria-hidden />falló</> : <><CircleCheck size={14} className="text-[#30D158]" aria-hidden />{l.glyph === "send" ? "enviado" : "hecho"}</>}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           ),
         )}
         {chat.busy && (
-          <p className="flex items-center gap-2 text-small text-muted" role="status">
-            <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" aria-hidden />
-            Pensando… {chat.elapsed} s · puede tardar 2–3 min
-            <button type="button" onClick={chat.cancel} className="ml-2 inline-flex items-center gap-1 text-caption text-faint hover:text-ink">
-              <Square size={10} aria-hidden /> Cancelar
-            </button>
-          </p>
+          <div className="flex gap-3" role="status">
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-raised"><Monogram size={16} /></span>
+            <div className="flex-1">
+              <div className="space-y-2">{[100, 85, 55].map((w) => <div key={w} className="skeleton h-3 rounded-full" style={{ width: `${w}%` }} />)}</div>
+              <p className="t-small mt-3 flex items-center gap-2 text-muted">
+                Pensando… {chat.elapsed} s · puede tardar 2–3 min
+                <button type="button" onClick={chat.cancel} className="mac-btn !h-7 !px-2.5"><Square size={10} aria-hidden />Cancelar</button>
+              </p>
+            </div>
+          </div>
         )}
-        {chat.error && <p className="text-small text-muted">{chat.error}</p>}
-      </section>
+      </div>
 
-      <form onSubmit={submit} className="flex items-end gap-2 border-t border-hairline pt-5">
-        <label className="sr-only" htmlFor="chat-input">Mensaje</label>
-        <textarea
-          id="chat-input"
-          rows={2}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={chat.busy}
-          placeholder="Escribe un mensaje · Enter para enviar"
-          className="min-h-10 flex-1 resize-none rounded-md border border-hairline bg-transparent px-3 py-2 text-small outline-none placeholder:text-faint focus:border-accent disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={chat.busy || !input.trim()}
-          className="mac-btn mac-btn-primary"
-        >
-          <Send size={14} aria-hidden /> Enviar
-        </button>
-      </form>
+      <div className="shrink-0 bg-bg pt-2 pb-2">
+        {chat.error && <p role="alert" className="t-small mb-2 flex items-center gap-1.5"><TriangleAlert size={14} className="text-[#FF9F0A]" aria-hidden />{chat.error}</p>}
+        <form onSubmit={submit} className="relative">
+          <label className="sr-only" htmlFor="chat-input">Mensaje</label>
+          <textarea
+            id="chat-input"
+            rows={2}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            disabled={chat.busy}
+            aria-describedby="chat-hint"
+            placeholder="Pregunta sobre la tripulación o pide una acción"
+            className="field !h-auto min-h-[52px] resize-none !rounded-xl py-3 pr-14 disabled:opacity-50"
+          />
+          <span id="chat-hint" className="sr-only">Enter envía, Mayús más Enter añade una línea</span>
+          <button type="submit" aria-label="Enviar" disabled={chat.busy || !input.trim()} className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40">
+            <ArrowUp size={16} strokeWidth={2} aria-hidden />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

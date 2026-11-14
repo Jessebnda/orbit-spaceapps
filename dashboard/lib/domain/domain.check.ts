@@ -6,6 +6,7 @@ import { thresholdBands } from "./bands";
 import { fmtPace } from "./format";
 import { dailySummaries } from "./behaviour";
 import { niceTicks } from "./ticks";
+import { base7, domainOf, trendOf, zonesOf } from "./vitals";
 import { procrustes, rssiToMeters, smacof } from "./proximity";
 
 // downsample: caps at max and keeps order.
@@ -67,3 +68,16 @@ const solved = smacof(["a", "b", "c"], ps, { a: { x: 1, y: 0 }, b: { x: 0, y: 2 
 assert.ok(Math.abs(Math.hypot(solved.b.x - solved.c.x, solved.b.y - solved.c.y) - 5) < 0.05, "bc = 5 m");
 const aligned = procrustes(solved, truth);
 assert.ok(Math.hypot(aligned.c.x - truth.c.x, aligned.c.y - truth.c.y) < 0.2, "aligned to previous frame");
+
+// vitals: domains match the spec (hr 35..145), zones tile the domain, trend is flat inside 5 % of the normal band.
+assert.deepEqual(domainOf("hr"), [35, 145]);
+assert.deepEqual(domainOf("spo2"), [85, 100]);
+for (const k of ["hr", "spo2", "temp", "bpSys", "resp"] as const) {
+  const z = zonesOf(k);
+  assert.equal(z[0].a, domainOf(k)[0], `${k} zones start at domain lo`);
+  assert.ok(z.every((x, i) => i === 0 || Math.abs(x.a - z[i - 1].b) < 1e-9), `${k} zones are contiguous`);
+}
+assert.equal(trendOf("hr", 72, 70)?.dir, "flat");
+assert.equal(trendOf("hr", 80, 70)?.dir, "up");
+assert.equal(trendOf("hr", 80), undefined);
+assert.equal(base7([{ ts: 0, v: 1 }, { ts: 1000, v: 2 }, { ts: 2000, v: 3 }]), undefined, "needs 3 days of data");

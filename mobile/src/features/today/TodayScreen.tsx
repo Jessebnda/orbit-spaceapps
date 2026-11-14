@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Modal, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { METRIC_META, GOALS, formatMetric, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
+import { METRIC_META, GOALS, THRESHOLDS, dayProgress, formatMetric, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../../store/store';
-import { color, font, radius, space, STATUS_LABEL } from '../../theme';
+import { color, figureFont, font, radius, space, STATUS_LABEL } from '../../theme';
 import { BodyMap, type BodyZone } from '../../components/ui/BodyMap';
 import { FeedRow } from '../../components/ui/FeedRow';
 import { FormSection } from '../../components/ui/FormSection';
@@ -14,6 +14,8 @@ import { MetricTrend } from '../../components/ui/MetricTrend';
 import { RangeDial } from '../../components/ui/RangeDial';
 import { Ring } from '../../components/ui/Ring';
 import { Card, Section } from '../../components/ui/FormSection';
+import { dayKey } from '../../domain/derive';
+import { Icon } from '../../components/ui/Icon';
 import { StatusMark } from '../../components/ui/StatusMark';
 
 const ZONES: Record<BodyZone, { label: string; metrics: MetricKey[] }> = {
@@ -48,7 +50,8 @@ const VITALS: MetricKey[] = ['hr', 'spo2', 'bpSys', 'temp'];
 
 export function TodayScreen() {
   const nav = useNavigation<{ navigate: (n: string) => void }>();
-  const { metrics, history, missionStart, dataSource } = useStore();
+  const { metrics, history, missionStart, dataSource, checkins } = useStore();
+  const doneToday = checkins.length > 0 && dayKey(checkins[checkins.length - 1]!.ts) === dayKey(Date.now());
   const { width } = useWindowDimensions();
   const [zone, setZone] = useState<BodyZone | null>(null);
   const [metric, setMetric] = useState<MetricKey | null>(null);
@@ -61,6 +64,18 @@ export function TodayScreen() {
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: space['2xl'] }}>
       <Text style={[font('small', color.muted), { paddingHorizontal: 16, paddingVertical: 12 }]}>Día {day} · {Object.keys(metrics).length ? 'Resumen de hoy' : 'Esperando tus sensores'}</Text>
       <View style={{ paddingHorizontal: 16, gap: 24 }}>
+        {doneToday ? (
+          <StatusMark label={`Check-in enviado a las ${new Date(checkins[checkins.length - 1]!.ts).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`} tone="ok" />
+        ) : (
+          <Press card label="Check-in de hoy" hint="Abre el formulario" onPress={() => nav.navigate('CheckIn')} style={{ backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Icon name="square.and.pencil" size={24} color={color.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={font('button')}>Check-in de hoy</Text>
+              <Text style={font('small', color.muted)}>¿Cómo estás? Tarda un minuto.</Text>
+            </View>
+            <Icon name="chevron.right" size={13} color={color.faint} weight="semibold" />
+          </Press>
+        )}
         {dataSource === 'sim' && <Text style={font('small', color.muted)}>Simulación · datos de demostración</Text>}
         {Object.keys(metrics).length ? overall === 'ok' ? <Text style={font('body', color.muted)}>Tus signos están dentro de rango.</Text> : <StatusMark label={STATUS_LABEL[overall]} tone={overall} /> : <Text style={font('body', color.muted)}>Conecta tus sensores para ver tus signos.</Text>}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
@@ -72,12 +87,12 @@ export function TodayScreen() {
         <Section title="Tus objetivos de hoy">
           <Card style={{ flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', gap: 16 }}>
             {(['activity', 'kcal', 'water'] as MetricKey[]).map((k) => <Press key={k} label={`${METRIC_META[k].label}, ${formatMetric(k, metrics[k])}`} onPress={() => setMetric(k)} style={{ alignItems: 'center', gap: 8 }}>
-              <Ring size={56} stroke={4} value={(metrics[k] ?? 0) / GOALS[k]!} tint={color.muted}><Text style={font('button')}>{metrics[k] == null ? '—' : Math.round((metrics[k]! / GOALS[k]!) * 100)}{metrics[k] != null ? '%' : ''}</Text></Ring>
+              <Ring size={72} stroke={9} value={(metrics[k] ?? 0) / GOALS[k]!} mark={(THRESHOLDS[k][1] * dayProgress(Date.now())) / GOALS[k]!} tint={statusOf(k, metrics[k]) === 'ok' ? color.accent : color.status[statusOf(k, metrics[k])]}><Text style={figureFont('small')}>{metrics[k] == null ? '—' : Math.round((metrics[k]! / GOALS[k]!) * 100)}{metrics[k] != null ? '%' : ''}</Text></Ring>
               <Text style={font('caption')}>{METRIC_META[k].label}</Text>
               <Text style={font('small', color.muted)}>{formatMetric(k, metrics[k])}</Text>
             </Press>)}
           </Card>
-          <Text style={font('small', color.muted)}>Objetivos diarios: 120 min · 2400 kcal · 2.5 L</Text>
+          <Text style={font('small', color.muted)}>La marca blanca es el avance esperado a esta hora. Metas: 120 min · 2400 kcal · 2.5 L</Text>
         </Section>
 
         <FormSection title="Más métricas">
@@ -109,9 +124,6 @@ export function TodayScreen() {
           </SettingsRow>
         </FormSection>
 
-        <Press label="Hacer el check-in de hoy" onPress={() => nav.navigate('CheckIn')} style={{ backgroundColor: color.accent, borderRadius: radius.md, borderCurve: 'continuous', padding: space.md, alignItems: 'center' }}>
-          <Text style={font('button', color.onAccent)}>Check-in de hoy</Text>
-        </Press>
       </View>
 
       <Modal visible={zone !== null} transparent animationType="fade" onRequestClose={() => setZone(null)}>
