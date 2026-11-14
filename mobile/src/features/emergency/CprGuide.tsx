@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -16,17 +16,53 @@ const SIZE = 260;
 const STROKE = 14;
 const SEG = 30;
 
-/** Evetts-Russomano en microgravedad: las piernas del rescatador sujetan el torso, manos en el centro del pecho. */
-function Diagram() {
+/** Paciente boca arriba (gris) y punto de compresión en la mitad inferior del esternón. */
+function Patient({ y }: { y: number }) {
   return (
-    <Svg width={300} height={160} viewBox="0 0 300 160">
-      <Circle cx={40} cy={100} r={18} fill={color.raised} />
-      <Rect x={58} y={84} width={150} height={34} rx={17} fill={color.raised} />
-      <Circle cx={210} cy={50} r={16} fill={color.text} />
-      <Path d="M212 68 L200 118" stroke={color.text} strokeWidth={9} strokeLinecap="round" />
-      <Path d="M200 118 Q170 150 130 128" stroke={color.text} strokeWidth={9} strokeLinecap="round" fill="none" />
-      <Path d="M200 118 Q230 150 260 128" stroke={color.text} strokeWidth={9} strokeLinecap="round" fill="none" />
-      <Path d="M212 78 L120 100" stroke={color.text} strokeWidth={7} strokeLinecap="round" />
+    <>
+      <Circle cx={52} cy={y + 12} r={14} fill={color.faint} />
+      <Rect x={68} y={y} width={118} height={26} rx={13} fill={color.faint} />
+      <Path d={`M184 ${y + 13} L270 ${y + 16}`} stroke={color.faint} strokeWidth={18} strokeLinecap="round" />
+    </>
+  );
+}
+function Push({ x, y }: { x: number; y: number }) {
+  return (
+    <>
+      <Circle cx={120} cy={y} r={5} fill={color.accent} />
+      <Path d={`M${x} ${y - 38} L${x} ${y - 12} M${x - 6} ${y - 18} L${x} ${y - 11} L${x + 6} ${y - 18}`} stroke={color.accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  );
+}
+const limb = { stroke: color.text, strokeLinecap: 'round' as const, fill: 'none' };
+
+/** Evetts-Russomano (flotando): piernas del rescatador rodean el torso y se cruzan bajo la espalda; brazos rectos al esternón. */
+function FloatingDiagram() {
+  return (
+    <Svg width={300} height={150} viewBox="0 0 300 150" accessibilityLabel="Rescatador rodea el torso con las piernas y comprime con brazos rectos">
+      <Patient y={100} />
+      <Path d="M88 84 Q66 100 72 132 Q92 142 116 134" {...limb} stroke={color.muted} strokeWidth={9} />
+      <Path d="M92 84 Q112 102 104 136" {...limb} strokeWidth={10} />
+      <Path d="M90 84 L114 50" {...limb} strokeWidth={12} />
+      <Circle cx={126} cy={34} r={12} fill={color.text} />
+      <Path d="M114 52 L120 98" {...limb} strokeWidth={7} />
+      <Push x={140} y={100} />
+    </Svg>
+  );
+}
+
+/** Parada de manos (paciente sujeto a la camilla): pies contra el techo, brazos rectos al esternón. */
+function HandstandDiagram() {
+  return (
+    <Svg width={300} height={160} viewBox="0 0 300 160" accessibilityLabel="Rescatador de cabeza con los pies en el techo y las manos en el esternón">
+      <Path d="M20 8 L280 8" stroke={color.hairline} strokeWidth={3} strokeLinecap="round" />
+      <Rect x={30} y={140} width={250} height={8} rx={4} fill={color.hairline} />
+      <Patient y={112} />
+      <Path d="M118 70 L120 110" {...limb} strokeWidth={7} />
+      <Circle cx={132} cy={86} r={12} fill={color.text} />
+      <Path d="M118 68 L112 36" {...limb} strokeWidth={12} />
+      <Path d="M112 36 L100 10 M112 36 L128 10" {...limb} strokeWidth={10} />
+      <Push x={150} y={112} />
     </Svg>
   );
 }
@@ -121,13 +157,18 @@ export function CprGuide({ onSwap }: { onSwap?: (secsLeft: number) => void }) {
         ) : null}
       </View>
       <Modal visible={posture} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPosture(false)}>
-        <View style={{ flex: 1, backgroundColor: color.bg, padding: 24, gap: 16, alignItems: 'center', justifyContent: 'center' }}>
-          <Diagram />
-          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>1. Llama al AED si está disponible.{'\n'}2. Cuando el paciente esté en la camilla médica, cambia al método de paro de manos.</Text>
+        <ScrollView style={{ flex: 1, backgroundColor: color.bg }} contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 16, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={font('title')}>Flotando</Text>
+          <FloatingDiagram />
+          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Rodea su torso con las piernas y cruza los pies bajo su espalda. Brazos rectos sobre la mitad inferior del esternón.</Text>
+          <Text style={font('title')}>En la camilla</Text>
+          <HandstandDiagram />
+          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Con el paciente sujeto, ponte de cabeza: pies contra el techo y brazos rectos sobre el esternón.</Text>
+          <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>Pide el DEA si está disponible.</Text>
           <Press label="Cerrar" onPress={() => setPosture(false)} style={{ height: 44, paddingHorizontal: 24, borderRadius: radius.full, backgroundColor: alpha(color.accent, 0.2), justifyContent: 'center' }}>
             <Text style={font('button', color.accentText)}>Cerrar</Text>
           </Press>
-        </View>
+        </ScrollView>
       </Modal>
     </View>
   );
