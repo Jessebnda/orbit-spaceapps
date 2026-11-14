@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
-import { METRIC_META, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
+import { METRIC_META, THRESHOLDS, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useStore } from '../../store/store';
@@ -8,14 +8,16 @@ import { color, figureFont, font, radius, STATUS_LABEL } from '../../theme';
 import { Creature } from '../pet/Creature';
 import { petMood } from '../../domain/derive';
 import { usePetChat } from '../pet/usePetChat';
-import { Icon } from '../../components/ui/Icon';
+import { Icon, type IconName } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { SosButton } from '../../components/ui/SosButton';
 import { StatusMark } from '../../components/ui/StatusMark';
 import { Ring } from '../../components/ui/Ring';
-import { RangeStrip } from '../../components/ui/RangeStrip';
+import { Sparkline } from '../../components/ui/Sparkline';
 
 const HUD: MetricKey[] = ['hr', 'spo2', 'bpSys', 'resp', 'temp'];
+const ICON: Partial<Record<MetricKey, IconName>> = { hr: 'heart.fill', spo2: 'drop.fill', bpSys: 'gauge.with.dots.needle.67percent', resp: 'lungs.fill', temp: 'thermometer.medium' };
+const SHORT: Partial<Record<MetricKey, string>> = { hr: 'Ritmo', spo2: 'Oxígeno', bpSys: 'Presión', resp: 'Respiración', temp: 'Temperatura' };
 const LINKS = [
   { key: 'hub', label: 'Nave' },
   { key: 'band', label: 'Banda' },
@@ -25,7 +27,7 @@ const LINKS = [
 
 /** Modo nave (horizontal, en la manga): tres columnas [vitales 2fr][protocolo 1.2fr][acciones 0.8fr], sin scroll, texto blanco sobre negro. */
 export function ShipHud() {
-  const { metrics, devices, hubOnline, protocols, done, checked, checkins } = useStore();
+  const { metrics, devices, hubOnline, protocols, done, checked, checkins, history } = useStore();
   const insets = useSafeAreaInsets();
   const [col3, setCol3] = useState(180);
   const [talking, setTalking] = useState(false);
@@ -59,17 +61,22 @@ export function ShipHud() {
     const bad = st !== 'ok';
     const ink = bad ? color.status[st] : color.text;
     const v = metrics[k];
+    const all = history.map((h) => h.m[k]).filter((x): x is number => x != null);
+    const step = Math.max(1, Math.ceil(all.length / 60)); // ~60 points is plenty for an 84 pt line
+    const values = all.filter((_, i) => i % step === 0 || i === all.length - 1);
     return (
-      <View key={k} accessible accessibilityLabel={`${METRIC_META[k].label} ${v == null ? 'sin dato' : v.toFixed(METRIC_META[k].decimals)} ${METRIC_META[k].unit}, ${STATUS_LABEL[st]}`} style={{ flex: 1, padding: 8, gap: 2, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: bad ? color.surface : undefined }}>
+      <View key={k} accessible accessibilityLabel={`${METRIC_META[k].label} ${v == null ? 'sin dato' : v.toFixed(METRIC_META[k].decimals)} ${METRIC_META[k].unit}, ${STATUS_LABEL[st]}`} style={{ flex: 1, padding: 8, justifyContent: 'center', gap: 2, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: bad ? color.surface : undefined }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={font('caption', color.muted)} numberOfLines={1}>{METRIC_META[k].label}</Text>
+          {ICON[k] ? <View style={{ width: 18, alignItems: 'center' }}><Icon name={ICON[k]!} size={14} color={bad ? color.status[st] : color.muted} /></View> : null}
+          <Text style={{ ...font('caption', color.muted), flexShrink: 1 }} numberOfLines={1}>{SHORT[k]} · {METRIC_META[k].unit}</Text>
           {bad ? <StatusMark label={STATUS_LABEL[st]} tone={st} compact /> : null}
         </View>
-        <Text style={font('hud', ink)} numberOfLines={1} adjustsFontSizeToFit>
-          {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
-          <Text style={font('body', color.muted)}> {METRIC_META[k].unit}</Text>
-        </Text>
-        <RangeStrip metric={k} value={v} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), fontSize: 40, lineHeight: 44, flex: 1 }} numberOfLines={1} adjustsFontSizeToFit>
+            {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
+          </Text>
+          <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
+        </View>
       </View>
     );
   };
@@ -99,8 +106,8 @@ export function ShipHud() {
       </View>
 
       <View style={{ flex: 1, flexDirection: 'row', gap: 12 }}>
-        <View style={{ flex: 2 }}>
-          {[slots.slice(0, 3), slots.slice(3, 6)].map((row, i) => <View key={i} style={{ flex: 1, flexDirection: 'row' }}>{row.map(cell)}</View>)}
+        <View style={{ flex: 2, gap: 8 }}>
+          {[slots.slice(0, 2), slots.slice(2, 4), slots.slice(4, 6)].map((row, i) => <View key={i} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>{row.map(cell)}</View>)}
         </View>
 
         <View style={{ flex: 1.4, gap: 8 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
