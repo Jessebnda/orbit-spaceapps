@@ -196,9 +196,9 @@ export const ACHIEVEMENTS = [
 export type AchievementId = (typeof ACHIEVEMENTS)[number]['id'];
 
 /* ───────────── Wire protocol (WebSocket, JSON) ─────────────
- * Phones and the dashboard connect to ws://<hub-lan-ip>:8787. Works fully offline on the ship LAN.
+ * Phones and the dashboard connect to ws://<hub-lan-ip>:8790. Works fully offline on the ship LAN.
  */
-export const HUB_PORT = 8787;
+export const HUB_PORT = 8790;
 
 export interface Proximity { crewId: string; rssi: number }
 

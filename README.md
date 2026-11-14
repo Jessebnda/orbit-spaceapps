@@ -17,7 +17,7 @@ Docs: [Arquitectura](docs/ARCHITECTURE.md) · [Convenciones](docs/CONVENTIONS.md
 
 ```bash
 npm run db         # pgvector local (Docker, ~20 MB)
-npm run hub        # hub en :8787
+npm run hub        # hub en :8790
 npm run sim        # 4 tripulantes simulados (añade -- --emergency c2)
 npm run dashboard  # http://localhost:3000
 npm run mobile     # Expo

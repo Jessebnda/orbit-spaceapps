@@ -4,7 +4,7 @@
  ESP32 banda ─┐  BLE (notify JSON c/2 s)
  ESP32 manga ─┼──────────────► Celular del tripulante (Expo)  ──┐
  ESP32 chaleco┘                  · pet con LLM en el cel (llama.rn) │  WebSocket LAN
-          ▲  RSSI de ESP32 ajenas → proximidad                      │  ws://<mac>:8787/ws
+          ▲  RSSI de ESP32 ajenas → proximidad                      │  ws://<mac>:8790/ws
           └──────────────────────────────────────────────────────────┤
                                                                      ▼
                          Hub (Node, Mac del capitán) ── reglas, emergencias, RAG, agente
@@ -34,7 +34,7 @@ Alcance BLE: 10–30 m en interiores; dentro de un módulo de nave cubre de sobr
 
 ## 2. Celular → Mac del capitán: WebSocket en la LAN
 
-- Cada cel abre `ws://<ip-mac>:8787/ws` y manda `hello`, `vitals` (2 s), `proximity` (5 s), `checkin`, `stat`, `sos`.
+- Cada cel abre `ws://<ip-mac>:8790/ws` y manda `hello`, `vitals` (2 s), `proximity` (5 s), `checkin`, `stat`, `sos`.
 - Si se pierde el WiFi, el cel **encola** (hasta 500 msgs) y reenvía al reconectar.
 - El hub responde con `protocol`, `emergency`, `self` (tu snapshot) y al capitán `snapshot` cada 3 s.
 - Rango: WiFi en interiores ~30–50 m por AP; una nave/base real tendría varios APs en la misma red. Sin red, el celular sigue funcionando solo (sensores, mascota, protocolos locales).
