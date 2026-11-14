@@ -40,7 +40,7 @@ export default function App() {
               <Root.Screen
                 name="CheckIn"
                 component={CheckInScreen}
-                options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: true, sheetCornerRadius: radius.sheet, contentStyle: { backgroundColor: color.bg } }}
+                options={{ presentation: 'modal', contentStyle: { backgroundColor: color.bg } }} // formSheet laid its content out above the visible sheet; the plain modal is positioned by UIKit
               />
             </Root.Navigator>
           </NavigationContainer>
