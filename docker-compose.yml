@@ -1,0 +1,15 @@
+# Local vector DB only (not the full Supabase stack): ~50-100 MB RAM next to Flash Next.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    mem_limit: 256m
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_PASSWORD: orbit
+      POSTGRES_DB: orbit
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+      - orbit-db:/var/lib/postgresql/data
+volumes:
+  orbit-db:

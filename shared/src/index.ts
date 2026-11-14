@@ -5,7 +5,7 @@
 
 export type Device = 'band' | 'sleeve' | 'vest';
 
-export type MetricKey = 'bpSys' | 'bpDia' | 'spo2' | 'hr' | 'temp' | 'activity' | 'resp' | 'sleep' | 'kcal' | 'water' | 'comms';
+export type MetricKey = 'bpSys' | 'bpDia' | 'spo2' | 'hr' | 'temp' | 'activity' | 'resp' | 'sleep' | 'kcal' | 'water';
 
 /** Which wearable produces which metric. */
 export const DEVICE_METRICS: Record<Device, MetricKey[]> = {
@@ -14,8 +14,8 @@ export const DEVICE_METRICS: Record<Device, MetricKey[]> = {
   vest: ['resp', 'activity'],        // chest strain gauge + IMU
 };
 
-/** Measured by ship systems (galley/food log, comms system), not wearables; they arrive in the same `vitals` message. */
-export const SHIP_METRICS: MetricKey[] = ['kcal', 'water', 'comms'];
+/** Measured by ship systems (galley/food log), not wearables; they arrive in the same `vitals` message. */
+export const SHIP_METRICS: MetricKey[] = ['kcal', 'water'];
 
 export type Metrics = Partial<Record<MetricKey, number>>;
 
@@ -30,7 +30,6 @@ export const METRIC_META: Record<MetricKey, { label: string; unit: string; info:
   sleep: { label: 'Sleep', unit: 'h', info: 'Light cycles, noise and workload cut sleep in orbit; chronic short sleep hurts mood, reaction time and immunity.' },
   kcal: { label: 'Food', unit: 'kcal', info: 'Crews often under-eat in flight; energy deficit speeds muscle and bone loss.' },
   water: { label: 'Water', unit: 'L', info: 'Fluid shifts blunt thirst; dehydration raises kidney-stone risk, already higher in microgravity.' },
-  comms: { label: 'Social contact', unit: 'min', info: 'Time talking with crew or family. Isolation and confinement are one of the five spaceflight hazards.' },
 };
 
 /* ───────────── Thresholds ─────────────
@@ -48,7 +47,6 @@ export const THRESHOLDS: Record<MetricKey, [number, number, number, number]> = {
   sleep: [4, 6, 10, 14],
   kcal: [1200, 2000, 3600, 5000],
   water: [1, 2, 4.5, 7],
-  comms: [-1, 15, 1e9, 1e9],
 };
 
 export type Status = 'ok' | 'watch' | 'critical';
@@ -126,6 +124,51 @@ export interface Emergency {
   resolved?: boolean;
 }
 
+/* ───────────── Crew communication ─────────────
+ * Measured by the ship comms system (assumed): every conversation between two members is one record.
+ * The hub keeps the history and flags each member against their OWN baseline, like social apps do.
+ */
+export interface CommsRecord { crewId: string; peerId: string; ts: number; minutes: number; channel: 'voice' | 'text' | 'in_person' }
+
+export interface CommsAnomaly { kind: 'withdrawal' | 'peer_drop' | 'spike'; peerId?: string; detail: string }
+
+const DAY = 86_400_000;
+
+/**
+ * Compare `crewId`'s last 24 h of talking against their previous `baselineDays` days.
+ * - withdrawal: total talk fell below half of their daily average (isolation sign)
+ * - peer_drop: a peer they talked to on most baseline days got zero today (possible conflict)
+ * - spike: total more than 2.5x their average (possible conflict or crisis)
+ */
+export function commsAnomalies(crewId: string, records: CommsRecord[], now = Date.now(), baselineDays = 7): CommsAnomaly[] {
+  const mine = records.filter((r) => r.crewId === crewId || r.peerId === crewId);
+  const peerOf = (r: CommsRecord) => (r.crewId === crewId ? r.peerId : r.crewId);
+  const today = mine.filter((r) => r.ts > now - DAY);
+  const base = mine.filter((r) => r.ts <= now - DAY && r.ts > now - DAY * (baselineDays + 1));
+  if (!base.length) return []; // no history yet, nothing to compare
+
+  const sum = (rs: CommsRecord[]) => rs.reduce((a, r) => a + r.minutes, 0);
+  const avg = sum(base) / baselineDays;
+  const todayMin = sum(today);
+  const out: CommsAnomaly[] = [];
+  if (todayMin < avg * 0.5) out.push({ kind: 'withdrawal', detail: `${Math.round(todayMin)} min today vs ${Math.round(avg)} min/day usual` });
+  if (todayMin > avg * 2.5) out.push({ kind: 'spike', detail: `${Math.round(todayMin)} min today vs ${Math.round(avg)} min/day usual` });
+
+  const daysWith = new Map<string, Set<number>>();
+  for (const r of base) {
+    const set = daysWith.get(peerOf(r)) ?? new Set<number>();
+    set.add(Math.floor((now - r.ts) / DAY));
+    daysWith.set(peerOf(r), set);
+  }
+  const talkedToday = new Set(today.map(peerOf));
+  for (const [peer, days] of daysWith) {
+    if (days.size >= Math.ceil(baselineDays * 0.6) && !talkedToday.has(peer)) {
+      out.push({ kind: 'peer_drop', peerId: peer, detail: `talked on ${days.size}/${baselineDays} days, none today` });
+    }
+  }
+  return out;
+}
+
 /* ───────────── Gamification / stats ───────────── */
 
 export type StatEvent =
@@ -149,6 +192,7 @@ export type ClientMsg =
   | { t: 'vitals'; crewId: string; ts: number; metrics: Metrics }
   | { t: 'proximity'; crewId: string; peers: Proximity[] }
   | { t: 'checkin'; crewId: string; checkin: CheckIn }
+  | { t: 'comms'; record: CommsRecord }                               // from ship comms system (or simulator)
   | { t: 'stat'; crewId: string; ts: number; event: StatEvent }
   | { t: 'pet_chat'; crewId: string; text: string }
   | { t: 'sos'; crewId: string; kind: EmergencyKind }                  // manual panic button
@@ -169,6 +213,7 @@ export interface CrewSnapshot {
   status: Status;
   lastCheckIn?: CheckIn;
   peers: Proximity[];
+  comms: { todayMin: number; byPeer: Record<string, number>; anomalies: CommsAnomaly[] };
   stats: { petMin: number; gameMin: number; activityMin: number; xp: number; achievements: string[] };
 }
 

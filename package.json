@@ -1,0 +1,13 @@
+{
+  "name": "orbit",
+  "private": true,
+  "workspaces": ["shared", "hub", "dashboard", "mobile"],
+  "scripts": {
+    "db": "docker compose up -d",
+    "hub": "npm -w hub run dev",
+    "sim": "npm -w hub run sim",
+    "dashboard": "npm -w dashboard run dev",
+    "mobile": "npm -w mobile run start",
+    "check": "npm -w shared run check"
+  }
+}
