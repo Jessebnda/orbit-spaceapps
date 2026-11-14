@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Modal, ScrollView, Text, View } from 'react-native';
+import { Image, Modal, ScrollView, Text, View } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { alpha, color, font, motion, radius } from '../../theme';
 import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
@@ -15,57 +15,6 @@ const VENT_MS = 6000;
 const SIZE = 260;
 const STROKE = 14;
 const SEG = 30;
-
-/** Paciente boca arriba (gris) y punto de compresión en la mitad inferior del esternón. */
-function Patient({ y }: { y: number }) {
-  return (
-    <>
-      <Circle cx={52} cy={y + 12} r={14} fill={color.faint} />
-      <Rect x={68} y={y} width={118} height={26} rx={13} fill={color.faint} />
-      <Path d={`M184 ${y + 13} L270 ${y + 16}`} stroke={color.faint} strokeWidth={18} strokeLinecap="round" />
-    </>
-  );
-}
-function Push({ x, y }: { x: number; y: number }) {
-  return (
-    <>
-      <Circle cx={120} cy={y} r={5} fill={color.accent} />
-      <Path d={`M${x} ${y - 38} L${x} ${y - 12} M${x - 6} ${y - 18} L${x} ${y - 11} L${x + 6} ${y - 18}`} stroke={color.accent} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </>
-  );
-}
-const limb = { stroke: color.text, strokeLinecap: 'round' as const, fill: 'none' };
-
-/** Evetts-Russomano (flotando): piernas del rescatador rodean el torso y se cruzan bajo la espalda; brazos rectos al esternón. */
-function FloatingDiagram() {
-  return (
-    <Svg width={300} height={150} viewBox="0 0 300 150" accessibilityLabel="Rescatador rodea el torso con las piernas y comprime con brazos rectos">
-      <Patient y={100} />
-      <Path d="M88 84 Q66 100 72 132 Q92 142 116 134" {...limb} stroke={color.muted} strokeWidth={9} />
-      <Path d="M92 84 Q112 102 104 136" {...limb} strokeWidth={10} />
-      <Path d="M90 84 L114 50" {...limb} strokeWidth={12} />
-      <Circle cx={126} cy={34} r={12} fill={color.text} />
-      <Path d="M114 52 L120 98" {...limb} strokeWidth={7} />
-      <Push x={140} y={100} />
-    </Svg>
-  );
-}
-
-/** Parada de manos (paciente sujeto a la camilla): pies contra el techo, brazos rectos al esternón. */
-function HandstandDiagram() {
-  return (
-    <Svg width={300} height={160} viewBox="0 0 300 160" accessibilityLabel="Rescatador de cabeza con los pies en el techo y las manos en el esternón">
-      <Path d="M20 8 L280 8" stroke={color.hairline} strokeWidth={3} strokeLinecap="round" />
-      <Rect x={30} y={140} width={250} height={8} rx={4} fill={color.hairline} />
-      <Patient y={112} />
-      <Path d="M118 70 L120 110" {...limb} strokeWidth={7} />
-      <Circle cx={132} cy={86} r={12} fill={color.text} />
-      <Path d="M118 68 L112 36" {...limb} strokeWidth={12} />
-      <Path d="M112 36 L100 10 M112 36 L128 10" {...limb} strokeWidth={10} />
-      <Push x={150} y={112} />
-    </Svg>
-  );
-}
 
 /** 30 segmentos: cada compresión llena uno. */
 function Segments({ count }: { count: number }) {
@@ -158,12 +107,12 @@ export function CprGuide({ onSwap }: { onSwap?: (secsLeft: number) => void }) {
       </View>
       <Modal visible={posture} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPosture(false)}>
         <ScrollView style={{ flex: 1, backgroundColor: color.bg }} contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 16, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={font('title')}>Flotando</Text>
-          <FloatingDiagram />
-          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Rodea su torso con las piernas y cruza los pies bajo su espalda. Brazos rectos sobre la mitad inferior del esternón.</Text>
           <Text style={font('title')}>En la camilla</Text>
-          <HandstandDiagram />
-          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Con el paciente sujeto, ponte de cabeza: pies contra el techo y brazos rectos sobre el esternón.</Text>
+          <Image source={require('../../../assets/cpr-handstand.jpg')} accessibilityLabel="Astronauta de cabeza, con los pies contra el techo y las manos en el pecho de un maniquí sujeto a la camilla" style={{ width: '100%', aspectRatio: 600 / 900, maxHeight: 420, borderRadius: radius.lg }} resizeMode="cover" />
+          <Text style={{ ...font('small', color.faint), alignSelf: 'flex-end' }}>Foto: NASA (ISS, 2023)</Text>
+          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Paciente sujeto a la camilla. Ponte de cabeza con los pies contra el techo, brazos rectos y manos en el centro del pecho. Empuja usando las piernas.</Text>
+          <Text style={font('title')}>Flotando, sin camilla</Text>
+          <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>Pasa una pierna sobre su hombro y la otra alrededor de su torso, y cruza los tobillos detrás de su espalda. Manos en el centro del pecho y comprime doblando el tronco.</Text>
           <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>Pide el DEA si está disponible.</Text>
           <Press label="Cerrar" onPress={() => setPosture(false)} style={{ height: 44, paddingHorizontal: 24, borderRadius: radius.full, backgroundColor: alpha(color.accent, 0.2), justifyContent: 'center' }}>
             <Text style={font('button', color.accentText)}>Cerrar</Text>
