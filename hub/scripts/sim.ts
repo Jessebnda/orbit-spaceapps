@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { HUB_PORT, type CheckIn, type ClientMsg, type CommsRecord, type CrewMember, type Metrics, type MetricKey, type StatEvent } from '@orbit/shared';
 
@@ -51,12 +52,23 @@ function pairRssi(a: string, b: string): number {
 
 const send = (ws: WebSocket, msg: ClientMsg) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
 
+// The hub keeps crew in memory, so after a hub restart the whole sim (hello, backfill, check-ins) must replay.
+let restarting = false;
+function restart() {
+  if (restarting) return;
+  restarting = true;
+  console.error('[sim] hub connection lost, restarting in 2 s');
+  setTimeout(() => {
+    spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], { stdio: 'inherit', detached: false }).on('exit', (c) => process.exit(c ?? 0));
+  }, 2000);
+}
+
 function connect(m: CrewMember): Promise<WebSocket> {
   return new Promise((ok) => {
     const ws = new WebSocket(HUB);
     ws.on('open', () => { send(ws, { t: 'hello', role: 'crew', member: m }); ok(ws); });
-    ws.on('error', (e) => { console.error(`[sim] ${m.id}: ${e.message}`); process.exit(1); });
-    ws.on('close', () => { console.error('[sim] hub connection closed'); process.exit(1); });
+    ws.on('error', (e) => console.error(`[sim] ${m.id}: ${e.message}`));
+    ws.on('close', restart);
   });
 }
 

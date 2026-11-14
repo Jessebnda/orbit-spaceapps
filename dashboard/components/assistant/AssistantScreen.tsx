@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { CircleCheck, LoaderCircle, Moon, Send, Square, type LucideIcon } from "lucide-react";
+import { Markdown } from "@/components/assistant/Markdown";
 import { useChat } from "@/components/assistant/useChat";
 import { actionChip } from "@/lib/domain/format";
 import { useApi } from "@/lib/services/useApi";
@@ -38,7 +39,7 @@ export function AssistantScreen() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="mac-toolbar flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-title font-bold tracking-[-0.3px]">Asistente</h1>
           <p className="mt-1 text-small text-muted">Modelo local en este equipo. Puede actuar: enviar protocolos o resolver emergencias.</p>
@@ -64,7 +65,7 @@ export function AssistantScreen() {
             </div>
           ) : (
             <div key={i} className="max-w-[85%] space-y-2">
-              <p className="text-body whitespace-pre-wrap">{m.content}</p>
+              <Markdown>{m.content}</Markdown>
               {m.actions && m.actions.length > 0 && (
                 <ul className="flex flex-wrap gap-1.5">
                   {m.actions.map((a, j) => (
@@ -104,7 +105,7 @@ export function AssistantScreen() {
         <button
           type="submit"
           disabled={chat.busy || !input.trim()}
-          className="inline-flex h-10 items-center gap-1.5 rounded-md border border-hairline px-3 text-small hover:bg-raised disabled:opacity-40"
+          className="mac-btn mac-btn-primary"
         >
           <Send size={14} aria-hidden /> Enviar
         </button>

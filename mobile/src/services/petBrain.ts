@@ -3,16 +3,16 @@ import type { LlamaContext } from 'llama.rn';
 import { METRIC_META, type MetricKey } from '@orbit/shared';
 import { ENV } from '../config/env';
 import { askPet } from './hub';
+import { PET_SYSTEM, petMessages, hasPhysicalRoleConfusion } from '../domain/petPrompt';
 import { useStore } from '../store/store';
 
 const MODEL_PATH = `${FileSystem.documentDirectory}${ENV.petModelFile}`;
 
 // Optional native module: absent in Expo Go. Every path then falls back to hub, then canned replies.
-let initLlama: typeof import('llama.rn').initLlama | null = null;
-try {
-  initLlama = (require('llama.rn') as typeof import('llama.rn')).initLlama;
-} catch {
-  initLlama = null;
+// Resolve the heavy native module only when a local chat is actually requested.
+function llamaInitializer(): typeof import('llama.rn').initLlama | null {
+  try { return (require('llama.rn') as typeof import('llama.rn')).initLlama; }
+  catch { return null; }
 }
 
 let ctx: LlamaContext | null = null;
@@ -20,10 +20,70 @@ let loading: Promise<LlamaContext> | null = null;
 let idle: ReturnType<typeof setTimeout> | null = null;
 let serial: Promise<unknown> = Promise.resolve();
 
+type LocalModelStage = 'missing' | 'present' | 'loading' | 'loaded' | 'local-test-ok' | 'role-test-ok' | 'role-test-failed' | 'local-response' | 'error';
+const modelStages: { stage: LocalModelStage; at: string; elapsedMs?: number }[] = [];
+let diagnosticWrites: Promise<unknown> = Promise.resolve();
+let verifiedContext: LlamaContext | null = null;
+let warmPending: Promise<{ available: boolean; verified: boolean }> | null = null;
+let roleCheckPassed: boolean | null = null;
+let lastLocalCompletion: { at: string; elapsedMs: number; tokens: number; tokensPerSecond: number; test: boolean } | null = null;
+
+/** Diagnostics contain only runtime metadata/timing, never prompts, replies or health. */
+function modelDiagnostic(stage: LocalModelStage, elapsedMs?: number) {
+  modelStages.push({ stage, at: new Date().toISOString(), ...(elapsedMs == null ? {} : { elapsedMs }) });
+  if (modelStages.length > 30) modelStages.shift();
+  const json = JSON.stringify({ modelFile: ENV.petModelFile, contextTokens: ENV.petContextTokens, gpu: ctx?.gpu ?? null, roleCheckPassed, stages: [...modelStages], lastLocalCompletion });
+  diagnosticWrites = diagnosticWrites.then(() => FileSystem.writeAsStringAsync(`${FileSystem.documentDirectory}model-status.json`, json)).catch(() => {});
+  return diagnosticWrites;
+}
+
+/** Load and run a tiny neutral test once per context, serialized with real replies. */
+export function warmModel(): Promise<{ available: boolean; verified: boolean }> {
+  if (warmPending) return warmPending;
+  warmPending = runSerial(async () => {
+    const began = Date.now();
+    try {
+      const file = await FileSystem.getInfoAsync(MODEL_PATH);
+      if (!file.exists) {
+        await modelDiagnostic('missing');
+        return { available: false, verified: false };
+      }
+      useStore.getState().setBrain({ status: 'ready' });
+      await modelDiagnostic('present');
+      await modelDiagnostic('loading');
+      const c = await context();
+      await modelDiagnostic('loaded', Date.now() - began);
+      if (verifiedContext !== c) {
+        const testStart = Date.now();
+        const result = await c.completion({ messages: [{ role: 'user', content: 'Responde solo: listo /no_think' }], n_predict: 8, temperature: 0, stop: ['<|im_end|>'] });
+        if (!result.text.trim() && result.tokens_predicted <= 0) throw new Error('local-test-empty');
+        lastLocalCompletion = { at: new Date().toISOString(), elapsedMs: Date.now() - testStart, tokens: result.tokens_predicted, tokensPerSecond: result.timings.predicted_per_second, test: true };
+        verifiedContext = c;
+        await modelDiagnostic('local-test-ok', Date.now() - began);
+        const roleResult = await c.completion({
+          messages: petMessages('Como estoy fisicamente', 'Modo SIMULACIÓN. Los datos son ficticios, no mediciones reales del usuario.'),
+          jinja: true, enable_thinking: false, n_predict: 96, temperature: 0.3, stop: ['<|im_end|>'],
+        });
+        const roleAnswer = roleResult.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        roleCheckPassed = !hasPhysicalRoleConfusion(roleAnswer) && /simula|fictici|datos reales/i.test(roleAnswer) && /\btu[s]?\b|tú|te sientes/i.test(roleAnswer);
+        await modelDiagnostic(roleCheckPassed ? 'role-test-ok' : 'role-test-failed', Date.now() - began);
+      }
+      return { available: true, verified: true };
+    } catch {
+      await modelDiagnostic('error', Date.now() - began);
+      throw new Error('No se pudo comprobar el modelo local');
+    } finally {
+      if (idle) clearTimeout(idle);
+      idle = setTimeout(() => void release(), ENV.petIdleMs);
+    }
+  }).finally(() => { warmPending = null; });
+  return warmPending;
+}
+
 /** Crisis words never reach a model: the reply is fixed and points to a human. */
 const CRISIS = /suicid|matarme|quitarme la vida|autolesi|hacerme daño|no quiero vivir/i;
 const CRISIS_REPLY = 'Lo que dices me preocupa. Contacta ahora mismo con el capitán o con el médico de vuelo; no te quedes con esto solo.';
-const SYSTEM = 'Eres Orbit, una mascota mentora de apoyo psicológico para un tripulante de una misión espacial. Hablas en español, con calidez, en 3 frases como máximo. Usa los datos del tripulante para contextualizar y anima acciones sanas (respirar, moverse, hablar con un compañero, dormir a tiempo). Nunca diagnosticas ni recetas. Si menciona autolesión, suicidio o una crisis, dile que contacte ahora al capitán o al médico de vuelo.';
+const SYSTEM = PET_SYSTEM;
 const SUMMARY = 'Resume en español, en 2 frases cálidas y concretas, estas observaciones semanales de un tripulante. No diagnosticas.';
 
 /** Only checks that the file exists. The model itself loads on the first message. */
@@ -36,7 +96,9 @@ export async function checkModel() {
 function context(): Promise<LlamaContext> {
   if (ctx) return Promise.resolve(ctx);
   if (!loading) {
-    loading = initLlama!({ model: MODEL_PATH.replace('file://', ''), n_ctx: ENV.petContextTokens, use_mlock: false })
+    const init = llamaInitializer();
+    if (!init) return Promise.reject(new Error('Modelo local no disponible'));
+    loading = init({ model: MODEL_PATH.replace('file://', ''), n_ctx: ENV.petContextTokens, use_mlock: false })
       .then((c) => (ctx = c))
       .finally(() => {
         loading = null;
@@ -47,12 +109,15 @@ function context(): Promise<LlamaContext> {
 
 /** Frees the context: on idle, on app background, and before another model is downloaded. */
 export async function release() {
+  return runSerial(async () => {
   if (idle) clearTimeout(idle);
   idle = null;
   if (loading) await loading.catch(() => {});
   const c = ctx;
   ctx = null;
+  verifiedContext = null;
   await c?.release().catch(() => {});
+  });
 }
 
 function runSerial<T>(fn: () => Promise<T>): Promise<T> {
@@ -62,18 +127,25 @@ function runSerial<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** One generation at a time. Null when the model is missing or fails, so callers fall back. */
-export function ask(system: string, user: string): Promise<string | null> {
-  if (!initLlama || useStore.getState().brain.status !== 'ready') return Promise.resolve(null);
+export function ask(system: string, user: string, telemetry?: string): Promise<string | null> {
+  if (useStore.getState().brain.status !== 'ready') return Promise.resolve(null);
   return runSerial(async () => {
     try {
       const c = await context();
+      const completionBegan = Date.now();
       const r = await c.completion({
-        messages: [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }],
+        messages: telemetry == null ? [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }] : petMessages(user, telemetry),
+        jinja: true,
+        enable_thinking: false,
         n_predict: 140,
-        temperature: 0.7,
+        temperature: 0.3,
         stop: ['<|im_end|>'],
       });
-      return r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || null;
+      lastLocalCompletion = { at: new Date().toISOString(), elapsedMs: Date.now() - completionBegan, tokens: r.tokens_predicted, tokensPerSecond: r.timings.predicted_per_second, test: false };
+      await modelDiagnostic('local-response', Date.now() - completionBegan);
+      const answer = r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      if (telemetry != null && hasPhysicalRoleConfusion(answer)) return null;
+      return answer || null;
     } catch {
       return null;
     } finally {
@@ -106,6 +178,7 @@ export async function downloadModel() {
 
 function facts(): string {
   const s = useStore.getState();
+  if (s.dataSource === 'sim') return 'Modo SIMULACIÓN. Los números de sensores son ficticios; no son mediciones del usuario y no permiten valorar su salud física.';
   const vitals = (Object.keys(METRIC_META) as MetricKey[])
     .filter((k) => s.metrics[k] != null)
     .map((k) => `${METRIC_META[k].label} ${s.metrics[k]} ${METRIC_META[k].unit}`);
@@ -120,9 +193,10 @@ function facts(): string {
 /** Fallback chain: on-device model, then the hub's pet brain, then canned replies. */
 export async function petReply(text: string): Promise<string> {
   if (CRISIS.test(text)) return CRISIS_REPLY;
-  const llm = await ask(SYSTEM, `${facts()}\nTripulante: ${text}`);
+  const llm = await ask(SYSTEM, text, facts());
   if (llm) return llm;
-  return (await askPet(text)) ?? canned(text);
+  const remote = await askPet(text);
+  return remote && !hasPhysicalRoleConfusion(remote) ? remote : canned(text);
 }
 
 /** Weekly insight wording: the model if loaded, otherwise the lines as they are. */
@@ -132,6 +206,7 @@ export async function summarize(lines: string[]): Promise<string> {
 
 function canned(text: string): string {
   const t = text.toLowerCase();
+  if (/f[ií]sic|salud|signos|m[eé]tricas|vitales/.test(t)) return useStore.getState().dataSource === 'sim' ? 'Tus datos actuales son de simulación y no permiten saber cómo estás físicamente. ¿Cómo te sientes tú ahora?' : 'Puedo ayudarte a revisar tus mediciones, pero no confirmar tu estado físico ni diagnosticarte. ¿Cómo te sientes y qué medición quieres revisar?';
   if (/cansad|sueño|dorm|fatig/.test(t)) return 'Descansar también es parte de la misión. Prueba 10 minutos de respiración lenta y deja las pantallas.';
   if (/triste|solo|sola|llor|añor/.test(t)) return 'Gracias por contármelo. ¿Quieres hablar hoy con alguien del equipo? Puedo guiarte en una sesión corta.';
   if (/miedo|ansi|estr|agobi|nervi/.test(t)) return 'Vamos paso a paso: inhala 4 segundos, sostén 4, exhala 4. ¿Lo hacemos juntos ahora?';

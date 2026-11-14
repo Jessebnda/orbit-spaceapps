@@ -195,12 +195,19 @@ export type StatEvent =
   | { type: 'achievement'; id: string }
   | { type: 'exploration'; title: string; km: number; minutes: number; place: string };
 
+/** GET /api/comms/:id (hub → dashboard): raw records for the window + today's summary. */
+export type CommsResponse = { records: CommsRecord[] } & CrewSnapshot['comms'];
+/** GET /api/leaderboard rows (hub → dashboard). */
+export interface LeaderRow { member: { id: string; name: string }; xp: number; achievements: string[] }
+/** GET /api/explorations rows (hub → dashboard). */
+export interface Exploration { crewId: string; name: string; ts: number; event: Extract<StatEvent, { type: 'exploration' }> }
+
 /** Mission achievements. The phone unlocks them and sends a `stat` achievement event; the hub sums XP for the leaderboard. */
 export const ACHIEVEMENTS = [
   { id: 'first_checkin', title: 'Primer registro', desc: 'Completa tu primer check-in diario', xp: 50 },
   { id: 'checkin_streak_7', title: 'Órbita estable', desc: '7 check-ins seguidos', xp: 200 },
   { id: 'exercise_2h', title: 'Contramedida', desc: '2 h de ejercicio en un día', xp: 150 },
-  { id: 'sleep_7h_x3', title: 'Circadiano', desc: 'Duerme 7 h o más tres noches seguidas', xp: 150 },
+  { id: 'sleep_7h_x3', title: 'Circadiano', desc: 'Acumula tres noches de 7 h o más', xp: 150 },
   { id: 'protocol_done', title: 'Al pie de la letra', desc: 'Termina un protocolo enviado por la nave', xp: 75 },
   { id: 'pet_session', title: 'De corazón', desc: 'Completa una sesión programada con tu mascota', xp: 100 },
   { id: 'defender_1000', title: 'Defensor', desc: 'Haz 1000 puntos en Orbit Defender', xp: 50 },
@@ -268,3 +275,5 @@ export function nearestResponders(victimId: string, peersBy: Record<string, Prox
   }
   return [...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([id]) => id);
 }
+
+export * from './visuals';

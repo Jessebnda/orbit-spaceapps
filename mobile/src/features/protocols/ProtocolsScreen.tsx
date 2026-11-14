@@ -1,112 +1,198 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { PROTOCOL_KIND_LABEL, type Protocol, type ProtocolKind } from '@orbit/shared';
 import { send, sendStat } from '../../services/hub';
 import { useStore } from '../../store/store';
-import { color, font, radius, space } from '../../theme';
+import { color, figureFont, font, radius, space } from '../../theme';
+import { Card, FormSection } from '../../components/ui/FormSection';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FeedRow } from '../../components/ui/FeedRow';
-import { FormSection } from '../../components/ui/FormSection';
+import { Icon, type IconName } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
-import { ScreenHeader } from '../../components/layout/ScreenHeader';
+import { Ring } from '../../components/ui/Ring';
 import { SegmentedTabs } from '../../components/ui/SegmentedTabs';
+import { StatusMark } from '../../components/ui/StatusMark';
 import { CprGuide } from '../emergency/CprGuide';
 import { Breathing } from './Breathing';
 import { JumpingJacks } from './JumpingJacks';
 
 const KINDS: ProtocolKind[] = ['emergency', 'physical', 'mental'];
-/** Tono por tipo: la emergencia usa coral de estado, no el rojo de emergencia activa. */
 const TONE = { emergency: 'critical', physical: 'accent', mental: 'muted' } as const;
+const KIND_ICON: Record<ProtocolKind, { name: IconName; ink: string }> = {
+  emergency: { name: 'cross.case.fill', ink: color.status.critical },
+  physical: { name: 'figure.run', ink: color.accent },
+  mental: { name: 'brain.head.profile', ink: color.muted },
+};
+type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void };
 
-/** Protocolos del ship por tipo, más el simulacro de RCP. Detalle en la misma pantalla. */
+const DRILL: Protocol = { id: 'drill-cpr', kind: 'emergency', title: 'Simulacro de RCP', reason: 'Práctica sin emergencia real.', steps: ['Llama al AED', 'Compresiones a 110/min', 'Ventilaciones cada 30'], createdBy: 'captain', guide: 'cpr' };
+
+/** Protocolos de la nave por tipo. Detalle = push nativo. */
 export function ProtocolsScreen() {
-  const { protocols, done } = useStore();
+  const nav = useNavigation<Nav>();
+  const { protocols, done, checked } = useStore();
   const [kind, setKind] = useState<ProtocolKind>('emergency');
-  const [open, setOpen] = useState<Protocol | 'drill' | null>(null);
+  const pending = protocols.filter((p) => !done.includes(p.id));
+  const urgent = pending.find((p) => p.kind === 'emergency') ?? pending[0];
+  const list = protocols.filter((p) => p.kind === kind && p !== urgent);
+  const open = (id: string) => nav.navigate('ProtocolDetail', { id });
+  const critical = pending.filter((p) => p.kind === 'emergency').length;
 
-  if (open) return <ProtocolDetail item={open} onBack={() => setOpen(null)} />;
-
-  const list = protocols.filter((p) => p.kind === kind);
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: space['2xl'] }}>
-      <ScreenHeader kicker="Protocolos" title="Del ship" subtitle="Lo que la nave te pide hacer." />
-      <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 32 }}>
+      <View style={{ paddingHorizontal: 16, gap: 24 }}>
+        <Text style={font('body', color.muted)}>{pending.length ? `${pending.length} pendiente${pending.length > 1 ? 's' : ''}${critical ? ` · ${critical} crítico${critical > 1 ? 's' : ''}` : ''}` : 'Todo al día'}</Text>
+
+        {urgent ? (
+          <Card pad={16} style={{ gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <StatusMark label={PROTOCOL_KIND_LABEL[urgent.kind]} tone={TONE[urgent.kind]} />
+                <Text style={font('title')}>{urgent.title}</Text>
+                {urgent.reason ? <Text style={{ ...font('body', color.muted), fontSize: 15 }}>{urgent.reason}</Text> : null}
+              </View>
+              <Ring size={56} stroke={6} value={urgent.steps.length ? (checked[urgent.id]?.length ?? 0) / urgent.steps.length : 0} tint={color.accent}>
+                <Text style={figureFont('small')}>{checked[urgent.id]?.length ?? 0}/{urgent.steps.length}</Text>
+              </Ring>
+            </View>
+            <Press label={`Empezar ${urgent.title}`} onPress={() => open(urgent.id)} haptic="light" style={{ height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={font('button', color.onAccent)}>Empezar</Text>
+            </Press>
+          </Card>
+        ) : null}
+
         <SegmentedTabs tabs={KINDS.map((k) => ({ key: k, label: PROTOCOL_KIND_LABEL[k] }))} active={kind} onChange={setKind} />
-        {kind === 'emergency' && (
-          <FeedRow title="Simulacro de RCP" subtitle="Practica la guía sin emergencia real" badge="Entrenamiento" badgeTone="accent" onPress={() => setOpen('drill')} last={list.length === 0} />
-        )}
-        {list.length === 0 && kind !== 'emergency' ? (
-          <EmptyState icon="checkmark-circle-outline" title="Nada pendiente en esta categoría." />
+
+        {list.length === 0 ? (
+          <EmptyState icon="checkmark.seal" title="Todo al día" hint="La nave no te ha pedido nada en esta categoría." />
         ) : (
-          list.map((p, i) => (
-            <FeedRow key={p.id} title={p.title} subtitle={p.reason} badge={done.includes(p.id) ? 'Hecho' : PROTOCOL_KIND_LABEL[p.kind]} badgeTone={done.includes(p.id) ? 'ok' : TONE[p.kind]} trailing={p.durationMin ? <Text style={font('small', color.muted)}>{p.durationMin} min</Text> : undefined} last={i === list.length - 1} onPress={() => setOpen(p)} />
-          ))
+          <FormSection>
+            {list.map((p, i) => (
+              <FeedRow
+                key={p.id}
+                icon={KIND_ICON[p.kind].name}
+                iconColor={done.includes(p.id) ? color.status.ok : KIND_ICON[p.kind].ink}
+                title={p.title}
+                subtitle={p.reason}
+                trailing={p.durationMin ? <Text style={font('body', color.muted)}>{p.durationMin} min</Text> : undefined}
+                badge={done.includes(p.id) ? 'Hecho' : undefined}
+                badgeTone="ok"
+                last={i === list.length - 1}
+                onPress={() => open(p.id)}
+              />
+            ))}
+          </FormSection>
         )}
+
+        {kind === 'emergency' ? (
+          <FormSection title="Entrenamiento" hint="Practica la guía sin emergencia real.">
+            <FeedRow icon="heart.text.square" iconColor={color.accent} title="Simulacro de RCP" last onPress={() => open('drill')} />
+          </FormSection>
+        ) : null}
       </View>
     </ScrollView>
   );
 }
 
-function ProtocolDetail({ item, onBack }: { item: Protocol | 'drill'; onBack: () => void }) {
-  const drill = item === 'drill';
-  const p: Protocol = drill
-    ? { id: 'drill-cpr', kind: 'emergency', title: 'Simulacro de RCP', reason: 'Práctica sin emergencia real.', steps: ['Llama al AED', 'Compresiones a 110/min', 'Ventilaciones cada 30'], createdBy: 'captain', guide: 'cpr' }
-    : item;
-  const checked = useStore((s) => s.checked[p.id] ?? []);
-  const [secs, setSecs] = useState((p.durationMin ?? 0) * 60);
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/** Detalle (push nativo): pasos con casilla, anillo de progreso, temporizador, guía y barra de acción fija. */
+export function ProtocolDetailScreen() {
+  const nav = useNavigation<Nav>();
+  const { params } = useRoute<{ key: string; name: string; params: { id: string } }>();
+  const insets = useSafeAreaInsets();
+  const drill = params.id === 'drill';
+  const stored = useStore((s) => s.protocols.find((x) => x.id === params.id));
+  const p = drill ? DRILL : stored;
+  const checked = useStore((s) => s.checked[params.id] ?? []);
+  const [secs, setSecs] = useState((p?.durationMin ?? 0) * 60);
   const [timer, setTimer] = useState(false);
+  const total = (p?.durationMin ?? 0) * 60;
   useEffect(() => {
     if (!timer) return;
     const id = setInterval(() => setSecs((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [timer]);
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (timer && secs === 0 && !wasRunning.current) {
+      wasRunning.current = true;
+      setTimer(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [secs, timer]);
 
-  const toggle = (i: number) => {
-    const next = checked.includes(i) ? checked.filter((x) => x !== i) : [...checked, i];
-    useStore.getState().setChecked(p.id, next);
-  };
+  if (!p) return <EmptyState icon="checkmark.seal" title="Protocolo no disponible" />;
+  const missing = p.steps.length - checked.length;
+  const toggle = (i: number) => useStore.getState().setChecked(p.id, checked.includes(i) ? checked.filter((x) => x !== i) : [...checked, i]);
   const finish = () => {
     if (drill) {
       useStore.getState().addStat('cprDrills', 1);
       useStore.getState().showToast('Simulacro registrado');
-      onBack();
-      return;
+    } else {
+      useStore.getState().markDone(p.id);
+      send({ t: 'protocol_ack', crewId: useStore.getState().profile.crewId, protocolId: p.id });
+      sendStat({ type: 'protocol_done', protocolId: p.id });
+      useStore.getState().showToast('Protocolo enviado al capitán');
     }
-    useStore.getState().markDone(p.id);
-    send({ t: 'protocol_ack', crewId: useStore.getState().profile.crewId, protocolId: p.id });
-    sendStat({ type: 'protocol_done', protocolId: p.id });
-    onBack();
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    nav.goBack();
   };
+  const current = p.steps.findIndex((_, i) => !checked.includes(i));
 
   return (
-    <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space['2xl'], gap: space.lg }}>
-      <Press label="Volver a protocolos" onPress={onBack} style={{ alignSelf: 'flex-start', padding: space.sm }}><Text style={font('body', color.accent)}>Volver</Text></Press>
-      <Text style={font('caption', color.muted)}>{PROTOCOL_KIND_LABEL[p.kind]}</Text>
-      <Text style={font('title')}>{p.title}</Text>
-      {p.reason ? <Text style={font('body', color.muted)}>{p.reason}</Text> : null}
+    <View style={{ flex: 1 }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 24 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={font('title')}>{p.title}</Text>
+            {p.reason ? <Text style={font('body', color.muted)}>{p.reason}</Text> : null}
+            {p.durationMin ? <Text style={font('small', color.muted)}>{p.durationMin} min</Text> : null}
+          </View>
+          <Ring size={72} stroke={7} value={p.steps.length ? checked.length / p.steps.length : 0} tint={color.accent}>
+            <Text style={figureFont('button')}>{checked.length}/{p.steps.length}</Text>
+          </Ring>
+        </View>
 
-      <FormSection title="Pasos">
-        {p.steps.map((s, i) => (
-          <Press key={i} label={`Paso ${i + 1}: ${s}`} onPress={() => toggle(i)} style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start', paddingVertical: space.sm }}>
-            <Text style={font('body', checked.includes(i) ? color.muted : color.text)}>{i + 1}. {s}</Text>
-          </Press>
-        ))}
-      </FormSection>
-
-      {p.durationMin ? (
-        <FormSection title="Tiempo">
-          <Text style={font('figure')}>{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}</Text>
-          <Press label={timer ? 'Pausar temporizador' : 'Iniciar temporizador'} onPress={() => setTimer((t) => !t)}><Text style={font('button', color.accent)}>{timer ? 'Pausar' : 'Iniciar'}</Text></Press>
+        <FormSection title="Pasos">
+          {p.steps.map((s, i) => {
+            const on = checked.includes(i);
+            return (
+              <Press key={i} label={`Paso ${i + 1}: ${s}`} hint={on ? 'Hecho. Toca para desmarcar' : 'Toca para marcar'} row haptic="light" onPress={() => toggle(i)}>
+                <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, backgroundColor: i === current ? color.raised : undefined }}>
+                  <Icon name={on ? 'checkmark.circle.fill' : 'circle'} size={24} color={on ? color.accent : color.faint} />
+                  <Text style={{ ...font('body', on ? color.muted : color.text), flex: 1 }}>{s}</Text>
+                </View>
+              </Press>
+            );
+          })}
         </FormSection>
-      ) : null}
 
-      {p.guide === 'breathing' && <Breathing />}
-      {p.guide === 'jumping_jacks' && <JumpingJacks />}
-      {(p.guide === 'cpr' || drill) && <CprGuide />}
+        {p.durationMin ? (
+          <Card style={{ alignItems: 'center', gap: 16 }}>
+            <Ring size={160} stroke={10} value={total ? 1 - secs / total : 0} tint={color.accent}>
+              <Text style={font('display')}>{clock(secs)}</Text>
+            </Ring>
+            <Press label={timer ? 'Pausar temporizador' : 'Iniciar temporizador'} haptic="light" onPress={() => { wasRunning.current = false; if (secs === 0) setSecs(total); setTimer((t) => !t); }} style={{ height: 44, paddingHorizontal: 28, borderRadius: radius.full, backgroundColor: color.raised, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={font('button', color.accentText)}>{timer ? 'Pausar' : 'Iniciar'}</Text>
+            </Press>
+          </Card>
+        ) : null}
 
-      <Press label={drill ? 'Registrar simulacro' : 'Marcar como hecho'} onPress={finish} style={{ backgroundColor: color.accent, borderRadius: radius.md, padding: space.md, alignItems: 'center' }}>
-        <Text style={font('button', color.onAccent)}>{drill ? 'Registrar simulacro' : 'Marcar como hecho'}</Text>
-      </Press>
-    </ScrollView>
+        {p.guide === 'breathing' ? <Card><Breathing /></Card> : null}
+        {p.guide === 'jumping_jacks' ? <Card><JumpingJacks /></Card> : null}
+        {p.guide === 'cpr' || drill ? <Card><CprGuide /></Card> : null}
+      </ScrollView>
+
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 8, backgroundColor: color.bg, gap: 6 }}>
+        {missing > 0 ? <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>Faltan {missing} paso{missing > 1 ? 's' : ''}</Text> : null}
+        <Press label={drill ? 'Registrar simulacro' : 'Marcar como hecho'} disabled={missing > 0} onPress={finish} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={font('button', color.onAccent)}>{drill ? 'Registrar simulacro' : 'Marcar como hecho'}</Text>
+        </Press>
+      </View>
+    </View>
   );
 }

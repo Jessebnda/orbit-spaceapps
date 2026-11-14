@@ -4,10 +4,11 @@
     "slug": "orbit",
     "version": "0.1.0",
     "orientation": "default",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "orbit",
     "ios": {
-      "bundleIdentifier": "com.orbit.app",
+      "bundleIdentifier": "com.jessebnda.orbit",
       "supportsTablet": false,
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "Orbit lee los sensores ESP32 de tu banda, manga y chaleco.",
@@ -18,7 +19,7 @@
       }
     },
     "android": {
-      "package": "com.orbit.app",
+      "package": "com.jessebnda.orbit",
       "permissions": [
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.BLUETOOTH_CONNECT"
@@ -33,7 +34,10 @@
         }
       ],
       "llama.rn",
-      "expo-font"
+      "expo-font",
+      "react-native-bottom-tabs",
+      "./plugins/withPodsMinTarget",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

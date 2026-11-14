@@ -35,7 +35,7 @@ export function ProtocolsScreen() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="mac-toolbar flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-title font-bold tracking-[-0.3px]">Protocolos</h1>
           <p className="mt-1 text-small text-muted">Biblioteca del hub. Elige a quién enviarlo.</p>
@@ -58,7 +58,7 @@ export function ProtocolsScreen() {
 
       {note && <p role="status" className="text-small text-muted">{note}</p>}
       {library.error && <p className="text-small text-muted">No se pudo leer la biblioteca: {library.error}</p>}
-      {!loaded && !library.data && <EmptyState>Esperando datos del hub…</EmptyState>}
+      {!loaded && !library.data && <EmptyState title="Esperando datos del hub…" />}
 
       {library.data && (
         <ProtocolLibrary

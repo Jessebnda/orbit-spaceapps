@@ -1,18 +1,32 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
-import { color, font, radius, space } from '../../theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { color, font } from '../../theme';
+import { FormSection } from './FormSection';
 
-/** Grupo de ajustes: título fuera, panel de tono con filas separadas por divisores. */
-export function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+/** Grupo de ajustes: el mismo grupo inset que FormSection. */
+export function SettingsGroup({ title, hint, children }: { title?: string; hint?: string; children: ReactNode }) {
+  return <FormSection title={title} hint={hint}>{children}</FormSection>;
+}
+
+const divider = <View style={{ position: 'absolute', left: 16, right: 0, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: color.hairline }} />;
+
+/** Fila de grupo: 44 pt mínimo, 16 de padding, divisor con sangría. Pasa `last` para quitar el divisor. */
+export function SettingsRow({ children, last }: { children: ReactNode; last?: boolean }) {
   return (
-    <View style={{ gap: space.sm }}>
-      <Text style={{ ...font('caption', color.muted), paddingHorizontal: space.xs }}>{title}</Text>
-      <View style={{ backgroundColor: color.surface, borderRadius: radius.lg, overflow: 'hidden' }}>{children}</View>
+    <View style={{ minHeight: 44, paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+      {children}
+      {last ? null : divider}
     </View>
   );
 }
 
-/** Fila de SettingsGroup. Pasa `last` para quitar el divisor inferior. */
-export function SettingsRow({ children, last }: { children: ReactNode; last?: boolean }) {
-  return <View style={{ paddingHorizontal: space.lg, paddingVertical: space.md, gap: space.sm, borderBottomWidth: last ? 0 : 1, borderBottomColor: color.hairline }}>{children}</View>;
+/** LabeledContent: etiqueta 17 a la izquierda (110), campo o valor a la derecha. Los TextInput van aquí, sin fondo propio. */
+export function LabeledRow({ label, children, last }: { label: string; children: ReactNode; last?: boolean }) {
+  return (
+    <View style={{ minHeight: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Text style={{ ...font('body'), width: 110 }}>{label}</Text>
+      <View style={{ flex: 1, alignItems: 'flex-end' }}>{children}</View>
+      {last ? null : divider}
+    </View>
+  );
 }

@@ -13,13 +13,13 @@ export interface AgentCtx {
   sendProtocol(crewId: string, p: Protocol): boolean;
 }
 
-const SYSTEM = 'Eres un asistente de análisis médico y psicológico para el capitán de la nave. Responde en español, de forma concisa, citando datos concretos (valores, horas, tendencias) obtenidos con las herramientas. No des diagnósticos definitivos: habla de indicios y recomienda revisión con el cirujano de vuelo en casos críticos.';
+const SYSTEM = 'Eres un asistente de análisis médico y psicológico para el capitán de la nave. Responde en español, de forma concisa, citando datos concretos (valores, horas, tendencias) obtenidos con las herramientas. No des diagnósticos definitivos: habla de indicios y recomienda revisión con el cirujano de vuelo en casos críticos. Formatea en markdown: listas y **negritas** para lo clave, tablas para comparar tripulantes. Sin emojis.';
 
 const fn = (name: string, description: string, properties: Record<string, unknown> = {}, required: string[] = []) =>
   ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });
 const str = (description: string) => ({ type: 'string', description });
 const TOOLS = [
-  fn('get_crew_overview', 'Estado actual de la tripulación: métricas, estado, check-ins y emergencias.'),
+  fn('get_crew_overview', 'Estado actual de TODA la tripulación en una llamada: métricas, estado, check-ins y emergencias. Úsala primero; no pidas historiales salvo que hagan falta tendencias.'),
   fn('get_member_history', 'Serie temporal de métricas de un tripulante.', { crewId: str('id, p. ej. c2'), hours: { type: 'number' } }, ['crewId']),
   fn('get_comms', 'Minutos de conversación de un tripulante hoy y anomalías frente a su línea base.', { crewId: str('id') }, ['crewId']),
   fn('get_behavior_insights', 'Análisis de comportamiento de los últimos 7 días (sueño, ánimo, comunicación, juego) de un tripulante.', { crewId: str('id') }, ['crewId']),
@@ -53,14 +53,17 @@ async function run(name: string, a: any, ctx: AgentCtx): Promise<unknown> {
   }
 }
 
+const MAX_ROUNDS = 4;
 const asText = (r: unknown) => (typeof r === 'string' ? r : JSON.stringify(r));
 const parseArgs = (s: string) => { try { return JSON.parse(s || '{}'); } catch { return {}; } };
 
 export async function ask(messages: { role: 'user' | 'assistant'; content: string }[], ctx: AgentCtx) {
   const convo: ChatMsg[] = [{ role: 'system', content: SYSTEM }, ...messages];
   const actions: { tool: string; args: unknown; result: string }[] = [];
-  for (let round = 0; round < 6; round++) {
-    const msg = await chat(convo, TOOLS);
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    // last round: no tools, so the model must answer with what it already gathered
+    const last = round === MAX_ROUNDS - 1;
+    const msg = await chat(last ? [...convo, { role: 'user', content: 'Responde ya con los datos que tienes.' }] : convo, last ? undefined : TOOLS);
     const calls = msg.tool_calls ?? [];
     if (!calls.length) return { reply: msg.content ?? '', actions };
     convo.push({ role: 'assistant', content: msg.content, tool_calls: calls });
@@ -71,7 +74,7 @@ export async function ask(messages: { role: 'user' | 'assistant'; content: strin
       convo.push({ role: 'tool', tool_call_id: call.id ?? `${round}-${i}`, content: asText(result) });
     }
   }
-  return { reply: 'No he podido cerrar el análisis en 6 pasos; prueba con una pregunta más concreta.', actions };
+  return { reply: 'No he podido cerrar el análisis; prueba con una pregunta más concreta.', actions };
 }
 
 const PET_SYSTEM = 'Eres un mentor psicológico cálido para un astronauta en una misión espacial. Responde en español, en como máximo 3 frases, sin diagnósticos. Si percibes riesgo (desesperanza, pánico intenso, pensamientos de hacerse daño), pide que avise al equipo médico.';

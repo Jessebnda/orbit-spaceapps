@@ -6,13 +6,18 @@ import type { SensorSource } from './types';
 
 // Optional native module: absent in Expo Go, where the simulator is the source.
 let manager: BleMgr | null = null;
-try {
-  const { BleManager } = require('react-native-ble-plx') as typeof import('react-native-ble-plx');
-  manager = new BleManager();
-} catch {
-  manager = null;
+let attempted = false;
+function ensureManager() {
+  if (!attempted) {
+    attempted = true;
+    try {
+      const { BleManager } = require('react-native-ble-plx') as typeof import('react-native-ble-plx');
+      manager = new BleManager();
+    } catch { manager = null; }
+  }
+  return manager;
 }
-export const bleAvailable = () => manager !== null;
+export const bleAvailable = () => ensureManager() !== null;
 
 let crew = '';
 let onM: (m: Metrics) => void = () => {};
@@ -25,7 +30,7 @@ const seen = new Map<string, { rssi: number; ts: number }>();
 export const bleSource: SensorSource = {
   start(onMetrics, onPeers) {
     this.stop();
-    if (!manager) return;
+    if (!ensureManager()) return;
     crew = useStore.getState().profile.crewId;
     onM = onMetrics;
     onP = onPeers;

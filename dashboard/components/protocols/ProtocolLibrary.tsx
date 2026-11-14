@@ -1,7 +1,7 @@
 import { Send } from "lucide-react";
 import type { Protocol, ProtocolKind } from "@orbit/shared";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LedgerList, LedgerRow } from "@/components/ui/LedgerRow";
+import { LedgerList } from "@/components/ui/LedgerRow";
 
 /** Library grouped by kind. Each row shows the steps on demand. */
 export function ProtocolLibrary({
@@ -27,7 +27,7 @@ export function ProtocolLibrary({
             {items.length ? (
               <LedgerList label={label}>
                 {items.map((p) => (
-                  <LedgerRow key={p.id}>
+                  <li key={p.id} className="flex items-center gap-4 px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-small font-semibold">{p.title}</p>
                       {p.reason && <p className="mt-0.5 text-small text-muted">{p.reason}</p>}
@@ -46,15 +46,15 @@ export function ProtocolLibrary({
                       type="button"
                       disabled={!canSend}
                       onClick={() => onSend(p)}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-hairline px-3 py-1.5 text-small hover:bg-raised disabled:opacity-40"
+                      className="mac-btn shrink-0"
                     >
                       <Send size={14} aria-hidden /> Enviar
                     </button>
-                  </LedgerRow>
+                  </li>
                 ))}
               </LedgerList>
             ) : (
-              <EmptyState>Sin protocolos en esta categoría.</EmptyState>
+              <EmptyState title="Sin protocolos en esta categoría." />
             )}
           </section>
         );

@@ -52,7 +52,7 @@ export function CustomProtocolForm({ canSend, onSubmit }: { canSend: boolean; on
               ))}
             </select>
           </label>
-          <button type="submit" disabled={!canSend} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-hairline px-3 py-2 text-small hover:bg-raised disabled:opacity-40">
+          <button type="submit" disabled={!canSend} className="mac-btn mac-btn-primary">
             <Send size={14} aria-hidden /> Crear y enviar
           </button>
         </div>

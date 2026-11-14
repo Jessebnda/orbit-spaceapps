@@ -1,36 +1,42 @@
 import { anomalyText, type CommsAnomaly } from "@orbit/shared";
+import { CheckCheck } from "lucide-react";
 import { CommsChart } from "@/components/crew/CommsChart";
+import { Avatar } from "@/components/ui/Avatar";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { InView } from "@/components/ui/InView";
-import { LedgerList, LedgerRow } from "@/components/ui/LedgerRow";
 import { Panel } from "@/components/ui/Panel";
+import { StatusMark } from "@/components/ui/StatusMark";
 import type { CommsRow } from "@/lib/services/hub";
 
-export function CommsPanel({ crewId, records, names, now, anomalies, error }: { crewId: string; records: CommsRow[]; names: Record<string, string>; now: number; anomalies: CommsAnomaly[]; error?: string }) {
+export function CommsPanel({ crewId, records, names, now, anomalies, error, loading }: { crewId: string; records: CommsRow[]; names: Record<string, string>; now: number; anomalies: CommsAnomaly[]; error?: string; loading?: boolean }) {
   const nameOf = (id: string) => names[id] ?? id;
   return (
-    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <Panel title="Comunicación · minutos por día y par">
+    <div className="grid gap-6 lg:grid-cols-12">
+      <Panel title="Comunicación" subtitle="Minutos por día y con quién · últimos 14 días" className="lg:col-span-8">
         {error ? (
-          <p className="text-small text-muted">No se pudo leer la comunicación: {error}</p>
+          <EmptyState compact title="No se pudo leer la comunicación" hint={error} />
         ) : (
-          <InView height={260}>
-            <CommsChart crewId={crewId} records={records} names={names} now={now} />
-          </InView>
+          <InView height={320}>{loading ? <div className="skeleton h-full rounded-md" /> : <CommsChart crewId={crewId} records={records} names={names} now={now} />}</InView>
         )}
       </Panel>
-      <Panel title="Alertas">
+      <section className="lg:col-span-4" aria-labelledby="alerts-h">
+        <h2 id="alerts-h" className="t-heading mb-3">Alertas</h2>
         {anomalies.length ? (
-          <LedgerList label="Alertas de comunicación">
+          <ul className="ledger" style={{ ["--inset" as string]: "16px" }}>
             {anomalies.map((a, i) => (
-              <LedgerRow key={i}>
-                <p className="text-small">{anomalyText(a, nameOf)}</p>
-              </LedgerRow>
+              <li key={i} className="flex items-start gap-3 py-3 pr-2">
+                {a.peerId ? <Avatar name={nameOf(a.peerId)} size={24} label={false} /> : <span className="size-6" />}
+                <div className="min-w-0 flex-1">
+                  <p className="t-small text-ink">{anomalyText(a, nameOf)}</p>
+                  <div className="mt-1"><StatusMark status="watch" label="Vigilar" /></div>
+                </div>
+              </li>
             ))}
-          </LedgerList>
+          </ul>
         ) : (
-          <p className="text-small text-faint">Sin alertas. La conversación está dentro de lo habitual.</p>
+          <EmptyState compact icon={CheckCheck} title="Sin alertas" hint="La conversación es la habitual." />
         )}
-      </Panel>
+      </section>
     </div>
   );
 }

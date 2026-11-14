@@ -1,59 +1,75 @@
 import { ACHIEVEMENTS, type CheckIn, type CrewSnapshot } from "@orbit/shared";
-import { Panel } from "@/components/ui/Panel";
+import { Bandage, HeartHandshake, StickyNote, ClipboardList } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { fmtAgo } from "@/lib/domain/format";
 
-/** Last check-in and achievements. Bereavement is shown as a plain line, with no detail. */
-export function CheckInPanel({ checkIn, stats }: { checkIn?: CheckIn; stats: CrewSnapshot["stats"] }) {
+const WORDS: Record<string, string[]> = {
+  mood: ["", "Muy bajo", "Bajo", "Regular", "Bien", "Muy bien"],
+  stress: ["", "Muy bajo", "Bajo", "Medio", "Alto", "Muy alto"],
+  missionOutlook: ["", "Muy negativa", "Negativa", "Neutral", "Positiva", "Muy positiva"],
+};
+
+/** Five 28 x 6 segments. Polarity is said in words ("Estrés 2/5 · bajo"), never with red/green per value. */
+function Scale({ label, k, v }: { label: string; k: keyof typeof WORDS; v: number }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Panel title="Último registro">
+    <div className="flex min-h-11 items-center gap-4">
+      <span className="t-small w-36 shrink-0 text-muted">{label}</span>
+      <span className="flex gap-1" role="meter" aria-valuemin={0} aria-valuemax={5} aria-valuenow={v} aria-label={`${label} ${v} de 5`}>
+        {[1, 2, 3, 4, 5].map((i) => <span key={i} className={`h-1.5 w-7 rounded-[3px] ${i <= v ? "bg-ink" : "bg-raised"}`} />)}
+      </span>
+      <span className="t-small ml-auto tabular-nums">{v}/5 <span className="text-muted">· {WORDS[k][v].toLowerCase()}</span></span>
+    </div>
+  );
+}
+
+function Line({ icon: Icon, label, children }: { icon: typeof Bandage; label: string; children: string }) {
+  return (
+    <div className="flex min-h-11 items-center gap-3 py-2">
+      <Icon size={16} strokeWidth={1.5} className="shrink-0 text-muted" aria-hidden />
+      <span className="t-small w-32 shrink-0 text-muted">{label}</span>
+      <span className="t-small whitespace-pre-wrap">{children}</span>
+    </div>
+  );
+}
+
+/** Last check-in and achievements. Bereavement is a plain line, with no detail. */
+export function CheckInPanel({ checkIn, stats, now }: { checkIn?: CheckIn; stats: CrewSnapshot["stats"]; now: number }) {
+  return (
+    <div className="grid gap-x-6 gap-y-8 lg:grid-cols-2">
+      <section aria-labelledby="ci-h">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 id="ci-h" className="t-heading">Último registro</h2>
+          {checkIn && <span className="t-small text-ink3">{fmtAgo(checkIn.ts, now)}</span>}
+        </div>
         {checkIn ? (
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-small">
-            <dt className="text-muted">Ánimo</dt>
-            <dd className="tabular-nums">{checkIn.mood}/5</dd>
-            <dt className="text-muted">Estrés</dt>
-            <dd className="tabular-nums">{checkIn.stress}/5</dd>
-            <dt className="text-muted">Perspectiva de la misión</dt>
-            <dd className="tabular-nums">{checkIn.missionOutlook}/5</dd>
-            {checkIn.injury && (
-              <>
-                <dt className="text-muted">Lesión</dt>
-                <dd>{checkIn.injury}</dd>
-              </>
-            )}
-            {checkIn.bereavement && (
-              <>
-                <dt className="text-muted">Familia</dt>
-                <dd>Pérdida familiar comunicada desde tierra.</dd>
-              </>
-            )}
-            {checkIn.note && (
-              <>
-                <dt className="text-muted">Nota</dt>
-                <dd className="whitespace-pre-wrap">{checkIn.note}</dd>
-              </>
-            )}
-          </dl>
+          <div className="ledger" style={{ ["--inset" as string]: "16px" }}>
+            <Scale label="Ánimo" k="mood" v={checkIn.mood} />
+            <Scale label="Estrés" k="stress" v={checkIn.stress} />
+            <Scale label="Perspectiva de la misión" k="missionOutlook" v={checkIn.missionOutlook} />
+            {checkIn.injury && <Line icon={Bandage} label="Lesión">{checkIn.injury}</Line>}
+            {checkIn.bereavement && <Line icon={HeartHandshake} label="Familia">Pérdida familiar comunicada desde tierra.</Line>}
+            {checkIn.note && <Line icon={StickyNote} label="Nota">{checkIn.note}</Line>}
+          </div>
         ) : (
-          <p className="text-small text-faint">Sin registros.</p>
+          <EmptyState compact icon={ClipboardList} title="Sin registros todavía" hint="Aparecen cuando el tripulante completa su check-in." />
         )}
-      </Panel>
-      <Panel title="Logros">
-        <p className="mb-3 text-small tabular-nums text-muted">{stats.xp} XP</p>
+      </section>
+      <section aria-labelledby="lg-h">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 id="lg-h" className="t-heading">Logros</h2>
+          <span className="t-title tabular-nums">{stats.xp} <span className="t-small font-normal text-muted">XP</span></span>
+        </div>
         {stats.achievements.length ? (
           <ul className="flex flex-wrap gap-2">
             {stats.achievements.map((id) => {
               const a = ACHIEVEMENTS.find((x) => x.id === id);
-              return (
-                <li key={id} title={a?.desc} className="rounded-sm border border-hairline px-2 py-1 text-caption text-muted">
-                  {a?.title ?? id}
-                </li>
-              );
+              return <li key={id} title={a?.desc} className="t-small rounded-full bg-chip px-3 py-1">{a?.title ?? id}</li>;
             })}
           </ul>
         ) : (
-          <p className="text-small text-faint">Ningún logro todavía.</p>
+          <EmptyState compact title="Ningún logro todavía" />
         )}
-      </Panel>
+      </section>
     </div>
   );
 }

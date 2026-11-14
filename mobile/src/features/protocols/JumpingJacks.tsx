@@ -1,39 +1,41 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Circle, Line } from 'react-native-svg';
-import { color, font, radius, space } from '../../theme';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { color, font, radius } from '../../theme';
+import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
+import { Ring } from '../../components/ui/Ring';
+import { useReducedMotion } from '../../theme/useReducedMotion';
 
-/** Figura de palo que abre y cierra cada medio segundo; una repetición por apertura. */
+const BEAT_MS = 500;
+
+/** Metrónomo de repeticiones: una cada 500 ms con tic háptico, anillo que se llena cada 30 y pulso de escala. Sin figura de palo. */
 export function JumpingJacks() {
-  const [open, setOpen] = useState(false);
+  const reduced = useReducedMotion();
   const [reps, setReps] = useState(0);
   const [running, setRunning] = useState(false);
+  const pulse = useSharedValue(1);
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
-      setOpen((o) => {
-        if (!o) setReps((r) => r + 1);
-        return !o;
-      });
-    }, 500);
+      setReps((r) => r + 1);
+      void Haptics.selectionAsync();
+      if (!reduced) pulse.set(withSequence(withTiming(1.04, { duration: 120 }), withTiming(1, { duration: 300 })));
+    }, BEAT_MS);
     return () => clearInterval(id);
-  }, [running]);
-  const arm = open ? 20 : -20;
-  const leg = open ? 14 : -10;
+  }, [running, reduced, pulse]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
   return (
-    <View style={{ alignItems: 'center', gap: space.md }}>
-      <Svg width={160} height={180} viewBox="0 0 160 180">
-        <Circle cx={80} cy={28} r={14} fill={color.text} />
-        <Line x1={80} y1={44} x2={80} y2={110} stroke={color.text} strokeWidth={6} strokeLinecap="round" />
-        <Line x1={80} y1={60} x2={30} y2={60 + arm} stroke={color.text} strokeWidth={6} strokeLinecap="round" />
-        <Line x1={80} y1={60} x2={130} y2={60 + arm} stroke={color.text} strokeWidth={6} strokeLinecap="round" />
-        <Line x1={80} y1={110} x2={50} y2={170 + leg / 2} stroke={color.text} strokeWidth={6} strokeLinecap="round" />
-        <Line x1={80} y1={110} x2={110} y2={170 + leg / 2} stroke={color.text} strokeWidth={6} strokeLinecap="round" />
-      </Svg>
-      <Text style={font('figure')}>{reps}</Text>
-      <Press label={running ? 'Pausar' : 'Empezar'} onPress={() => setRunning((r) => !r)} style={{ backgroundColor: color.raised, borderRadius: radius.md, paddingHorizontal: space.xl, paddingVertical: space.md }}>
-        <Text style={font('button')}>{running ? 'Pausar' : 'Empezar'}</Text>
+    <View style={{ alignItems: 'center', gap: 16 }}>
+      <Animated.View style={style}>
+        <Ring size={160} stroke={10} value={(reps % 30) / 30} tint={color.accent}>
+          <Icon name="figure.run" size={28} color={color.muted} />
+          <Text style={font('display')}>{reps}</Text>
+        </Ring>
+      </Animated.View>
+      <Press label={running ? 'Pausar' : 'Empezar'} haptic="light" onPress={() => setRunning((r) => !r)} style={{ height: 44, paddingHorizontal: 28, borderRadius: radius.full, backgroundColor: color.raised, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={font('button', color.accentText)}>{running ? 'Pausar' : 'Empezar'}</Text>
       </Press>
     </View>
   );

@@ -11,7 +11,7 @@ export function CrewSummary({ crew, loaded }: { crew: CrewSnapshot[]; loaded: bo
   const dash = (v: string) => (loaded ? v : "—");
 
   return (
-    <dl className="grid grid-cols-1 divide-y divide-hairline rounded-lg bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+    <dl className="grid grid-cols-1 divide-y divide-hairline rounded-md bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       <div className="p-5">
         <dt className="text-caption font-bold text-muted">Fuera de rango</dt>
         <dd className="mt-1 text-figure font-semibold tabular-nums">{dash(String(outOfRange))}</dd>

@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LoaderCircle, Sparkles } from "lucide-react";
+import { CircleCheck, Info, LoaderCircle, OctagonAlert, Sparkles, TriangleAlert } from "lucide-react";
+import { Monogram } from "@/components/shell/Nav";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { behaviorInsights, type CommsAnomaly, type CrewMember, type CrewSnapshot } from "@orbit/shared";
 import { Panel } from "@/components/ui/Panel";
 import { LedgerList, LedgerRow } from "@/components/ui/LedgerRow";
 import { behaviourPrompt, dailySummaries } from "@/lib/domain/behaviour";
 import { HubError, api, START_CMD, type CommsRow, type HistoryPoint } from "@/lib/services/hub";
 import { statusColor } from "@/lib/theme";
+
+const ToneGlyph = ({ tone }: { tone: "ok" | "watch" | "critical" }) => {
+  const G = tone === "critical" ? OctagonAlert : tone === "watch" ? TriangleAlert : CircleCheck;
+  return <G size={16} strokeWidth={2} style={{ color: statusColor[tone] }} aria-label={tone === "ok" ? "Normal" : tone === "watch" ? "Vigilar" : "Crítico"} role="img" />;
+};
 
 /** Behaviour insights from 14 days of history and comms, plus the request to the assistant. */
 export function BehaviourPanel({
@@ -58,37 +65,47 @@ export function BehaviourPanel({
   }
 
   return (
-    <Panel title="Análisis de comportamiento">
+    <Panel
+      title="Análisis de comportamiento"
+      subtitle="Últimos 14 días"
+      action={
+        <span title="Calculado con comunicación y vitales. El hub no guarda histórico de ánimo, así que las señales de ánimo usan solo el último día." className="text-ink3">
+          <Info size={14} strokeWidth={1.5} aria-label="Cómo se calcula" role="img" />
+        </span>
+      }
+    >
       {insights.length ? (
         <LedgerList label="Señales">
           {insights.map((i) => (
-            <LedgerRow key={i.id}>
-              <p className="text-small" style={{ color: statusColor[i.tone] }}>
-                {i.text}
-              </p>
-            </LedgerRow>
+            <LedgerRow
+              key={i.id}
+              media={<ToneGlyph tone={i.tone} />}
+              title={<span className="t-body font-normal">{i.text}</span>}
+            />
           ))}
         </LedgerList>
       ) : (
-        <p className="text-small text-faint">Sin señales destacadas en los últimos 14 días, o todavía no hay historial suficiente.</p>
+        <EmptyState compact icon={CircleCheck} title="Sin señales destacadas" hint={history.length < 20 ? "Todavía no hay historial suficiente." : undefined} />
       )}
-      <p className="mt-3 text-caption text-faint">
-        Calculado con 14 días de comunicación y vitales. El hub no envía histórico de registros de ánimo, así que las señales de ánimo solo usan el último día.
-      </p>
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={askAssistant}
-          disabled={asking}
-          className="inline-flex items-center gap-2 rounded-md border border-hairline px-3 py-1.5 text-small hover:bg-raised disabled:opacity-50"
-        >
+      <div className="mt-5 flex items-center gap-3">
+        <button type="button" onClick={askAssistant} disabled={asking} className="mac-btn">
           {asking ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles size={14} aria-hidden />}
           Pedir análisis al asistente
         </button>
-        {asking && <span className="text-caption text-faint">Puede tardar 2–3 min</span>}
+        {asking && <span className="t-small text-ink3">Puede tardar 2–3 min</span>}
       </div>
-      {askError && <p className="mt-3 text-small text-muted">{askError}</p>}
-      {reply && <p className="mt-4 text-small whitespace-pre-wrap">{reply}</p>}
+      {asking && (
+        <div className="mt-4 space-y-2" role="status" aria-label="Generando análisis">
+          {[100, 90, 60].map((w) => <div key={w} className="skeleton h-3 rounded-full" style={{ width: `${w}%` }} />)}
+        </div>
+      )}
+      {askError && <p className="t-small mt-4 flex items-center gap-1.5"><TriangleAlert size={14} style={{ color: statusColor.watch }} aria-hidden />{askError}</p>}
+      {reply && (
+        <div className="mt-4 flex gap-3" aria-live="polite">
+          <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-raised"><Monogram size={14} /></span>
+          <div className="t-body min-w-0 flex-1 whitespace-pre-wrap">{reply}</div>
+        </div>
+      )}
     </Panel>
   );
 }

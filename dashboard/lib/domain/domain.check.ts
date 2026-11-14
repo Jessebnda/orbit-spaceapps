@@ -5,6 +5,8 @@ import { downsample } from "./downsample";
 import { thresholdBands } from "./bands";
 import { fmtPace } from "./format";
 import { dailySummaries } from "./behaviour";
+import { niceTicks } from "./ticks";
+import { procrustes, rssiToMeters, smacof } from "./proximity";
 
 // downsample: caps at max and keeps order.
 assert.equal(downsample([1, 2, 3], 500).length, 3);
@@ -24,7 +26,7 @@ for (const key of ["hr", "spo2", "temp", "bpSys", "bpDia", "resp", "activity", "
 assert.equal(statusOf("hr", 72), "ok");
 assert.equal(statusOf("hr", 110), "watch");
 assert.equal(statusOf("hr", 135), "critical");
-assert.equal(STATUS_COLOR.critical, "#FF5A5F");
+assert.equal(STATUS_COLOR.critical, "#FF453A");
 
 // fmtPace and formatMetric.
 assert.equal(fmtPace(30, 5), "6:00 /km");
@@ -52,3 +54,16 @@ assert.ok(days[0].day < days[13].day, "oldest first");
 assert.deepEqual(behaviorInsights(days.slice(0, 3)), []);
 
 console.log("domain checks passed");
+
+// niceTicks: round steps, cover the range.
+for (const t of [niceTicks(31, 139, 4), niceTicks(86.7, 102.3, 4)]) assert.ok(t.every((v) => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6), "round ticks");
+assert.ok(niceTicks(31, 139, 4).at(-1)! >= 139);
+
+// proximity: -59 dBm is 1 m; SMACOF recovers a known layout up to rotation, and procrustes aligns it back.
+assert.ok(Math.abs(rssiToMeters(-59) - 1) < 1e-9);
+const truth = { a: { x: 0, y: 0 }, b: { x: 3, y: 0 }, c: { x: 0, y: 4 } };
+const ps = [{ a: "a", b: "b", rssi: 0, m: 3 }, { a: "a", b: "c", rssi: 0, m: 4 }, { a: "b", b: "c", rssi: 0, m: 5 }];
+const solved = smacof(["a", "b", "c"], ps, { a: { x: 1, y: 0 }, b: { x: 0, y: 2 }, c: { x: -2, y: 1 } });
+assert.ok(Math.abs(Math.hypot(solved.b.x - solved.c.x, solved.b.y - solved.c.y) - 5) < 0.05, "bc = 5 m");
+const aligned = procrustes(solved, truth);
+assert.ok(Math.hypot(aligned.c.x - truth.c.x, aligned.c.y - truth.c.y) < 0.2, "aligned to previous frame");

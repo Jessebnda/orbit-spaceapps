@@ -6,7 +6,7 @@ Expo SDK 54 (React Native 0.81.5, React 19.1). El teléfono va en la manga del b
 
 ```bash
 npm install
-npx expo start            # Expo Go: corre con el simulador como fuente de datos
+npx expo start            # Metro para una compilación nativa de desarrollo
 npm run typecheck         # tsc --noEmit
 npm run check:domain      # asserts de la lógica pura (domain/*.check.ts)
 ```
@@ -20,7 +20,7 @@ npx expo run:ios          # o: npx expo run:android
 eas build --profile development
 ```
 
-En Expo Go ambos módulos se cargan con `require` dentro de `try/catch`: la app arranca igual, BLE aparece como "no disponible" y la mascota usa el hub o respuestas predefinidas.
+La app actual requiere una compilación nativa: además de BLE y llama, usa pestañas nativas. Después de añadir dependencias nativas, ejecutar `cd ios && pod install` y recompilar. Actualizar solo el JavaScript no instala los módulos de iOS. BLE y el modelo local se inicializan al usarlos, no antes del primer frame.
 
 ## Configurar el hub
 
@@ -29,11 +29,11 @@ La URL por defecto es `ws://192.168.1.50:8790/ws`, armada con `HUB_PORT` de `@or
 ## Estructura
 
 ```
-App.tsx                         entrada (solo reexporta src/app/App)
+index.js                        primer frame, carga diferida y diagnóstico de arranque
+App.tsx                         reexporta src/app/App
 src/app/                        App (providers, tabs u HUD según orientación), MainTabs, navigation
 src/features/<feature>/         una carpeta por pantalla: today, checkin, pet, protocols, emergency, game, profile, ship
 src/components/ui/              StatusMark, FeedRow, FormSection, SettingsGroup, SegmentedTabs, EmptyState, MetricTile, Sparkline, BodyMap, SosButton, Press, Toast
-src/components/layout/          ScreenHeader
 src/domain/                     lógica pura sin I/O (+ *.check.ts)
 src/services/                   hub.ts, petBrain.ts, runtime.ts, sensors/{types,sim,ble}.ts
 src/store/                      zustand + AsyncStorage (store.ts, types.ts)
@@ -73,3 +73,11 @@ Pensado para correr todo el día en un teléfono con poca RAM y batería, en la 
 - Probar BLE y llama.rn en un build de desarrollo y en un teléfono real, no solo en simulador.
 - Los umbrales son genéricos (los de `@orbit/shared`); reemplazar por los valores del equipo.
 - La descarga del modelo (Qwen3-0.6B Q8_0) pide conexión a internet; el resto de la app no la necesita.
+
+## Diagnosticar el arranque en iPhone
+
+`index.js` escribe solamente etapa y tiempo en `Documents/startup.json`; no contiene datos de salud. `AppErrorBoundary` presenta los fallos de render como una pantalla recuperable. Los fallos de módulos nativos se diagnostican con `xcrun devicectl device process launch --device <UDID> --terminate-existing --console com.jessebnda.orbit`.
+
+Para una versión independiente de Metro, compilar **Release** con `-derivedDataPath /tmp/orbit-ios-release`. Verificar que `Orbit.app/main.jsbundle` existe antes de instalar. Mantener DerivedData fuera del árbol de fuentes: el post-install de React Native recorre `Info.plist` y falla al leer los binarios generados.
+
+Enlaces: `orbit://hoy`, `orbit://mascota`, `orbit://logros`, `orbit://yo`, `orbit://protocolos`, `orbit://check-in`.

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { ACHIEVEMENTS, type DaySummary, type Metrics } from '@orbit/shared';
+import { type CommsResponse, type DaySummary, type Exploration, type LeaderRow, type Metrics } from '@orbit/shared';
 import { PROTOCOLS } from '../domain/protocols';
 import { DAY, allSnaps, commsLog, commsOf, crews, emergencies, snapshotOf, statLog } from '../domain/state';
 import { commsText, historyText, insightsText, overviewText } from '../domain/context';
@@ -48,18 +48,15 @@ const ctx: AgentCtx = {
   sendProtocol,
 };
 
-function leaderboard() {
+function leaderboard(): LeaderRow[] {
   return [...crews.values()]
-    .map(({ snap }) => ({
-      crewId: snap.member.id, name: snap.member.name, xp: snap.stats.xp,
-      achievements: ACHIEVEMENTS.filter((a) => snap.stats.achievements.includes(a.id)),
-    }))
+    .map(({ snap }) => ({ member: { id: snap.member.id, name: snap.member.name }, xp: snap.stats.xp, achievements: snap.stats.achievements }))
     .sort((a, b) => b.xp - a.xp);
 }
 
-function explorations() {
+function explorations(): Exploration[] {
   return statLog
-    .flatMap(({ crewId, ts, event }) => (event.type === 'exploration' ? [{ crewId, name: nameOf(crewId), ts, ...event }] : []))
+    .flatMap(({ crewId, ts, event }) => (event.type === 'exploration' ? [{ crewId, name: nameOf(crewId), ts, event }] : []))
     .sort((a, b) => b.ts - a.ts);
 }
 
@@ -76,7 +73,8 @@ async function route(method: string, path: string, q: URLSearchParams, body: any
     if (path.startsWith('/api/comms/')) {
       const id = crewParam();
       const since = now - Number(q.get('days') ?? 14) * DAY;
-      return { records: commsLog.filter((r) => r.ts > since && (r.crewId === id || r.peerId === id)), ...commsOf(id, now) };
+      const out: CommsResponse = { records: commsLog.filter((r) => r.ts > since && (r.crewId === id || r.peerId === id)), ...commsOf(id, now) };
+      return out;
     }
   }
   if (method === 'POST') {
@@ -107,6 +105,23 @@ async function route(method: string, path: string, q: URLSearchParams, body: any
   throw new HttpError(404, 'not found');
 }
 
+/**
+ * The local model can take minutes; Safari drops a fetch that gets no bytes for ~60 s ("Load failed").
+ * Send headers now and a space every 15 s (JSON.parse ignores leading whitespace); errors go in the body.
+ */
+async function longPoll(res: ServerResponse, work: () => Promise<unknown>) {
+  res.writeHead(200, JSON_HDR);
+  const beat = setInterval(() => res.write(' '), 15_000);
+  try {
+    res.end(JSON.stringify(await work()));
+  } catch (e) {
+    if (!(e instanceof HttpError)) console.error(e);
+    res.end(JSON.stringify({ error: (e as Error).message, status: e instanceof HttpError ? e.status : 500 }));
+  } finally {
+    clearInterval(beat);
+  }
+}
+
 export async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*'); // LAN only, no login by design
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -115,6 +130,7 @@ export async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   try {
     const url = new URL(req.url ?? '/', 'http://hub');
     const body = req.method === 'POST' ? await readJson(req) : {};
+    if (req.method === 'POST' && url.pathname === '/api/assistant') return void (await longPoll(res, () => route('POST', url.pathname, url.searchParams, body)));
     const out = await route(req.method ?? 'GET', url.pathname, url.searchParams, body); // before writeHead: a throw must still get its status
     res.writeHead(200, JSON_HDR).end(JSON.stringify(out));
   } catch (e) {

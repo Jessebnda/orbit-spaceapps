@@ -18,13 +18,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: init?.body ? { "content-type": "application/json" } : undefined,
   });
   if (!res.ok) throw new HubError(res.status, (await res.text()) || res.statusText);
-  return res.json() as Promise<T>;
+  const data = await res.json();
+  // long-poll endpoints (assistant) answer 200 early and put failures in the body
+  if (data && typeof data === "object" && "error" in data && "status" in data) throw new HubError(data.status, data.error);
+  return data as T;
 }
 
 export interface HistoryPoint { ts: number; metrics: Metrics }
-export interface CommsRow { crewId: string; peerId: string; ts: number; minutes: number; channel: string }
-export interface LeaderRow { member: { id: string; name: string }; xp: number; achievements: string[] }
-export interface Exploration { crewId: string; name: string; ts: number; event: { title: string; km: number; minutes: number; place: string } }
+export type { CommsRecord as CommsRow, CommsResponse } from "@orbit/shared";
+export type { LeaderRow, Exploration } from "@orbit/shared"; // one contract with the hub
 export interface Action { tool: string; args: Record<string, unknown>; result?: unknown }
 export interface ChatMsg { role: "user" | "assistant"; content: string; actions?: Action[] }
 export type LlmState = { state: "off" | "starting" | "ready" };

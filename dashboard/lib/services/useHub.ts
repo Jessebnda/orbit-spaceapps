@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from "react";
 import type { CrewSnapshot, Emergency, HubMsg } from "@orbit/shared";
 import { HUB } from "@/lib/services/hub";
 
@@ -8,9 +8,10 @@ import { HUB } from "@/lib/services/hub";
  * Captain WebSocket. Each snapshot replaces the previous one (nothing accumulates).
  * Reconnects with backoff; the socket and the retry timer are closed on unmount.
  */
-export function useHub() {
+function useHubSocket() {
   const [snap, setSnap] = useState<{ crew: CrewSnapshot[]; emergencies: Emergency[] } | null>(null);
   const [connected, setConnected] = useState(false);
+  const [lastAt, setLastAt] = useState(0);
 
   useEffect(() => {
     let sock: WebSocket | undefined;
@@ -28,6 +29,7 @@ export function useHub() {
       };
       ws.onmessage = (e) => {
         const m = JSON.parse(e.data as string) as HubMsg;
+        setLastAt(Date.now());
         if (m.t === "snapshot") {
           setSnap({ crew: m.crew, emergencies: m.emergencies });
         } else if (m.t === "emergency") {
@@ -50,5 +52,19 @@ export function useHub() {
     };
   }, []);
 
-  return { crew: snap?.crew ?? [], emergencies: snap?.emergencies ?? [], loaded: snap !== null, connected };
+  return { crew: snap?.crew ?? [], emergencies: snap?.emergencies ?? [], loaded: snap !== null, connected, lastAt };
+}
+
+type HubState = ReturnType<typeof useHubSocket>;
+const Ctx = createContext<HubState | null>(null);
+
+/** One captain socket for the whole shell: the nav footer and every screen read the same snapshot. */
+export function HubProvider({ children }: { children: ReactNode }) {
+  return createElement(Ctx.Provider, { value: useHubSocket() }, children);
+}
+
+export function useHub(): HubState {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useHub needs <HubProvider>");
+  return v;
 }

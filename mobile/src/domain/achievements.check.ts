@@ -16,6 +16,8 @@ console.assert(newlyUnlocked({ ...base, explorations: [{ km: 6 }, { km: 4 }] }, 
 console.assert(!newlyUnlocked({ ...base, days: { [key(now)]: { activity: 119 } } }, []).includes('exercise_2h'), '119 min is not 2 h');
 const three = { [key(now)]: { sleep: 7 }, [key(now - DAY)]: { sleep: 7.5 }, [key(now - 2 * DAY)]: { sleep: 8 } };
 console.assert(newlyUnlocked({ ...base, days: three }, []).includes('sleep_7h_x3'), 'three nights of 7 h+ unlock');
-console.assert(!newlyUnlocked({ ...base, days: { ...three, [key(now - DAY)]: { sleep: 6.9 } } }, []).includes('sleep_7h_x3'), 'a 6.9 h night breaks the run');
+console.assert(!newlyUnlocked({ ...base, days: { ...three, [key(now - DAY)]: { sleep: 6.9 } } }, []).includes('sleep_7h_x3'), 'a 6.9 h night does not count as a qualifying night');
 console.assert(!newlyUnlocked({ ...base, stats: { ...base.stats, cprDrills: 1 } }, ['cpr_trained']).includes('cpr_trained'), 'already unlocked is not returned again');
+const accumulated = { [key(now)]: { sleep: 7 }, [key(now - 3 * DAY)]: { sleep: 7.5 }, [key(now - 8 * DAY)]: { sleep: 8 } };
+if (!newlyUnlocked({ ...base, days: accumulated }, []).includes('sleep_7h_x3')) throw new Error('qualifying nights accumulate across rest days');
 console.log('achievements.check: ok');

@@ -2,7 +2,8 @@
 
 /* Values come from lib/theme.ts (shared/src/design.ts) as CSS vars set in the root layout. */
 @theme inline {
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  /* System stack only: no web fonts. SF is picked up on Apple platforms. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   --color-bg: var(--t-bg);
   --color-surface: var(--t-surface);
   --color-raised: var(--t-raised);
@@ -10,6 +11,8 @@
   --color-ink: var(--t-text);
   --color-muted: var(--t-muted);
   --color-faint: var(--t-faint);
+  --color-ink3: var(--t-text-3);
+  --color-chip: var(--t-chip);
   --color-accent: var(--t-accent);
   --color-emergency: var(--t-emergency);
   --radius-sm: var(--t-r-sm);
@@ -17,6 +20,7 @@
   --radius-lg: var(--t-r-lg);
   --radius-xl: var(--t-r-xl);
   --text-status: var(--t-fs-status);
+  --text-small: var(--t-fs-small);
   --text-caption: var(--t-fs-caption);
   --text-body: var(--t-fs-body);
   --text-section: var(--t-fs-section);
@@ -32,6 +36,11 @@ html {
 :focus-visible {
   outline: 2px solid var(--t-accent);
   outline-offset: 2px;
+}
+
+/* Numeric cells: tabular figures so columns align. */
+.tabular-nums {
+  font-feature-settings: "tnum";
 }
 
 /* Only press feedback and color/opacity fades; no decorative motion. */
@@ -52,4 +61,185 @@ button:not(:disabled):active {
   button:not(:disabled):active {
     transform: none;
   }
+}
+
+/* macOS source list: translucent sidebar material. Solid when the user asks for less transparency. */
+.mac-sidebar {
+  background: rgba(28, 28, 30, 0.72);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mac-sidebar {
+    background: var(--t-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Sticky page toolbar: blurred strip whose bottom fades into content. The hairline appears only once content scrolls under it. */
+.mac-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  isolation: isolate;
+  padding-bottom: 16px;
+}
+.mac-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+.mac-toolbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.5px;
+  background: var(--t-hairline);
+  opacity: 0;
+  animation: mac-toolbar-edge linear both;
+  animation-timeline: scroll(root);
+  animation-range: 0px 24px;
+}
+@keyframes mac-toolbar-edge {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mac-toolbar::after {
+    animation: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .mac-toolbar::before {
+    background: var(--t-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* Inset grouped list: one surface, rounded, rows split by a hairline that starts at the text inset. */
+.mac-group {
+  background: var(--t-surface);
+  border-radius: var(--t-r-md);
+}
+.mac-rows > li + li,
+.mac-rows > tbody > tr + tr {
+  background-image: linear-gradient(var(--t-hairline), var(--t-hairline));
+  background-repeat: no-repeat;
+  background-size: calc(100% - 32px) 0.5px;
+  background-position: 16px 0;
+}
+.mac-rows > li:hover,
+.mac-rows > tbody > tr:hover {
+  background-color: var(--t-raised);
+}
+
+/* macOS push button: 28 px tall, 6 px radius. Primary is accent-filled, secondary is raised. */
+.mac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--t-r-sm);
+  background: var(--t-raised);
+  color: var(--t-text);
+  font-size: var(--t-fs-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.mac-btn:hover:not(:disabled) {
+  background: #3a3a3c;
+}
+.mac-btn:disabled {
+  opacity: 0.4;
+}
+.mac-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(10 132 255 / 0.5);
+}
+.mac-btn-primary {
+  background: var(--t-accent);
+  color: var(--t-on-accent);
+}
+.mac-btn-primary:hover:not(:disabled) {
+  background: #2b95ff;
+}
+
+/* ---- Dashboard system (docs/product/review/dashboard.md §3) ---- */
+:root {
+  /* faint (#6E6E73) is 3.4:1 on surface: terciary text uses this one instead. faint stays for disabled glyphs, grid, tracks. */
+  --t-text-3: #8e8e93;
+  --t-chip: rgba(255, 255, 255, 0.08);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+.t-lead { font-size: 36px; line-height: 40px; font-weight: 600; letter-spacing: -0.02em; font-feature-settings: "tnum"; }
+.t-figure { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; font-feature-settings: "tnum"; }
+.t-title { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.t-heading { font-size: 15px; line-height: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.t-body { font-size: 15px; line-height: 22px; }
+.t-small { font-size: 13px; line-height: 18px; }
+.t-micro { font-size: 11px; line-height: 14px; font-weight: 500; }
+
+/* Row split: hairline 0.5px, inset from the left. */
+.ledger > * + * { background-image: linear-gradient(var(--t-hairline), var(--t-hairline)); background-repeat: no-repeat; background-size: calc(100% - var(--inset, 16px)) 0.5px; background-position: right top; }
+@media (hover: hover) {
+  .row-hover:hover { background-color: rgba(255, 255, 255, 0.04); }
+  a.card-hover:hover { background-color: var(--t-raised); }
+}
+.row-selected { background-color: rgba(255, 255, 255, 0.08); }
+a.card-hover:active { transform: scale(0.98); }
+
+.skeleton { background: var(--t-raised); animation: skeleton-pulse 1.2s ease-in-out infinite alternate; }
+@keyframes skeleton-pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+@keyframes takeover-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.takeover { animation: takeover-in 220ms var(--ease-out) both; }
+
+.ring-fill { transition: stroke-dashoffset 220ms var(--ease-out); }
+.node-move { transition: transform 300ms var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; opacity: 0.75; }
+  .takeover { animation: none; }
+  .ring-fill, .node-move { transition: none; }
+}
+
+/* Segmented control: raised track, surface pill. */
+.seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--t-raised); }
+.seg > button { height: 24px; padding: 0 12px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--t-muted); white-space: nowrap; }
+.seg > button[aria-checked="true"], .seg > button[aria-selected="true"] { background: #48484a; color: var(--t-text); }
+@media (hover: hover) { .seg > button:hover { color: var(--t-text); } }
+
+.btn-lg { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: var(--t-r-sm); font-size: 15px; font-weight: 600; background: var(--t-raised); color: var(--t-text); white-space: nowrap; }
+.btn-lg.primary { background: var(--t-accent); color: var(--t-on-accent); }
+.btn-lg:disabled { opacity: 0.4; }
+.btn-lg:focus-visible, .field:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--t-accent); }
+@media (hover: hover) { .btn-lg:hover:not(:disabled) { background: #3a3a3c; } .btn-lg.primary:hover:not(:disabled) { background: #2b95ff; } }
+.field { background: var(--t-raised); border-radius: var(--t-r-sm); color: var(--t-text); padding: 0 12px; height: 36px; width: 100%; font-size: 15px; }
+.field::placeholder { color: var(--t-text-3); }
+
+.sr-only-x { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.ledger-table tbody tr + tr > * { background-image: linear-gradient(var(--t-hairline), var(--t-hairline)); background-repeat: no-repeat; background-size: 100% 0.5px; background-position: top; }
+
+/* Keep every destination visible on narrow screens instead of clipping a horizontal nav. */
+@media (max-width: 767px) {
+  .mobile-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; gap: 4px; }
+  .mobile-nav > div:nth-child(2), .mobile-nav > div:nth-child(2) > div { display: contents; }
+  .mobile-nav a { min-height: 56px; height: auto; flex-direction: column; justify-content: center; gap: 4px; padding: 6px 2px; white-space: normal; font-size: 11px; }
+  .mobile-nav a > span:last-child[aria-label] { position: absolute; top: 0; right: 0; margin: 0; }
 }

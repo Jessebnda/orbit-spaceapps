@@ -1,5 +1,7 @@
 # Design Brief — Orbit
 
+> Referencia histórica. Para valores y componentes implementados, consultar [DESIGN_SYSTEM.md](../../DESIGN_SYSTEM.md) y `shared/src/design.ts`. Las tablas originales de este brief no describen la paleta actual.
+
 **Status:** Living · basado en la infraestructura de diseño de colab (`docs/product/DESIGN-BRIEF.md` + `src/theme` + `components/ui`), adaptado a una cabina espacial.
 **Visual direction:** *Cabina* — panel de instrumentos nocturno, calma operativa.
 **Tokens (fuente de verdad):** `shared/src/design.ts` (mobile los usa directo; dashboard los mapea a CSS vars).

@@ -27,6 +27,8 @@ export function sendStat(event: StatEvent) {
 
 /** Asks the hub's pet brain. Resolves null on timeout, so the caller falls back. */
 export function askPet(text: string): Promise<string | null> {
+  // A chat question is transient: never replay it later from the offline queue.
+  if (ws?.readyState !== WebSocket.OPEN) return Promise.resolve(null);
   return new Promise((resolve) => {
     const done = (r: string | null) => {
       clearTimeout(t);

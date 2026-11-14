@@ -65,6 +65,7 @@ type State = {
   addSession: (s: Session) => void;
   finishSession: (id: string) => void;
   snoozeSession: (id: string) => void;
+  removeSession: (id: string) => void;
   setActiveSession: (id: string | null) => void;
   unlock: (ids: string[]) => void;
   showToast: (text: string | null) => void;
@@ -176,6 +177,7 @@ export const useStore = create<State>()(
       addSession: (x) => set((s) => ({ sessions: [...s.sessions, x] })),
       finishSession: (id) => set((s) => ({ sessions: s.sessions.map((x) => (x.id === id ? { ...x, done: true } : x)), activeSession: null })),
       snoozeSession: (id) => set((s) => ({ sessions: s.sessions.map((x) => (x.id === id ? { ...x, ts: Date.now() + 10 * 60_000 } : x)), activeSession: null })),
+      removeSession: (id) => set((s) => ({ sessions: s.sessions.filter((x) => x.id !== id) })),
       setActiveSession: (activeSession) => set({ activeSession }),
       unlock: (ids) => set((s) => ({ unlocked: [...s.unlocked, ...ids.filter((i) => !s.unlocked.includes(i))] })),
       showToast: (toast) => set({ toast }),

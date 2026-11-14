@@ -40,3 +40,10 @@ assert.ok(evaluate(act, new Date(2026, 10, 14, 17).getTime()).protocols.includes
 assert.ok(!evaluate(act, new Date(2026, 10, 14, 10).getTime()).protocols.includes('jumping_jacks'));
 
 console.log('rules.check: ok');
+
+// context: history is summarised per metric, never a raw series
+import { historyText, overviewText } from './context';
+const h = historyText([{ ts: NOON, metrics: { hr: 60 } }, { ts: NOON + 60_000, metrics: { hr: 80 } }]);
+assert.match(h, /último 80 lpm, mín 60 lpm, media 70 lpm, máx 80 lpm/);
+assert.match(overviewText([], []), /No hay tripulantes/);
+console.log('context.check: ok');

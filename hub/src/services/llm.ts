@@ -57,7 +57,8 @@ export async function chat(messages: ChatMsg[], tools?: unknown[]): Promise<Chat
     res = await fetch(`${LLM_URL}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, tools, temperature: 0.3 }),
+      // no thinking: at ~9 tok/s on SSD-streamed experts, a hidden <think> block cost minutes per round
+      body: JSON.stringify({ messages, tools, temperature: 0.3, max_tokens: 900, chat_template_kwargs: { enable_thinking: false } }),
       signal: AbortSignal.timeout(180_000), // the model streams experts from SSD and can be slow
     });
   } catch { throw new LlmOffline(); }

@@ -2,7 +2,7 @@ import { HUB_PORT } from '@orbit/shared';
 
 /** Defaults for the ship LAN. The hub URL is editable in Yo > Ajustes. */
 export const ENV = {
-  hubUrl: `ws://192.168.1.50:${HUB_PORT}/ws`,
+  hubUrl: process.env.EXPO_PUBLIC_HUB_URL ?? `ws://192.168.1.50:${HUB_PORT}/ws`, // set at build time to the captain Mac IP
   petModelUrl: 'https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf',
   petModelFile: 'qwen3-0.6b-q8_0.gguf',
   /** Memory: the pet context is freed after this idle time, and on background. */
