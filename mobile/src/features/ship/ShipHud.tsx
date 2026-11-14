@@ -72,7 +72,7 @@ export function ShipHud() {
           {bad ? <StatusMark label={STATUS_LABEL[st]} tone={st} compact /> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), flex: 1 }} numberOfLines={1}>
             {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           </Text>
           <Sparkline values={values} width={64} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
