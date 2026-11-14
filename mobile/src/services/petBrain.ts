@@ -3,7 +3,7 @@ import type { LlamaContext } from 'llama.rn';
 import { METRIC_META, type MetricKey } from '@orbit/shared';
 import { ENV } from '../config/env';
 import { askPet } from './hub';
-import { PET_SYSTEM, petMessages, hasPhysicalRoleConfusion } from '../domain/petPrompt';
+import { PET_SYSTEM, petMessages, hasPhysicalRoleConfusion, type PetTurn } from '../domain/petPrompt';
 import { useStore } from '../store/store';
 
 const MODEL_PATH = `${FileSystem.documentDirectory}${ENV.petModelFile}`;
@@ -61,11 +61,11 @@ export function warmModel(): Promise<{ available: boolean; verified: boolean }> 
         verifiedContext = c;
         await modelDiagnostic('local-test-ok', Date.now() - began);
         const roleResult = await c.completion({
-          messages: petMessages('Como estoy fisicamente', 'Modo SIMULACIÓN. Los datos son ficticios, no mediciones reales del usuario.'),
+          messages: petMessages('Como estoy fisicamente', 'Datos simulados (demo). Signos: Pulso 72 lpm, SpO₂ 97 %.'),
           jinja: true, enable_thinking: false, n_predict: 96, temperature: 0.3, stop: ['<|im_end|>'],
         });
         const roleAnswer = roleResult.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        roleCheckPassed = !hasPhysicalRoleConfusion(roleAnswer) && /simula|fictici|datos reales/i.test(roleAnswer) && /\btu[s]?\b|tú|te sientes/i.test(roleAnswer);
+        roleCheckPassed = !hasPhysicalRoleConfusion(roleAnswer) && /\btu[s]?\b|tú|te sientes/i.test(roleAnswer);
         await modelDiagnostic(roleCheckPassed ? 'role-test-ok' : 'role-test-failed', Date.now() - began);
       }
       return { available: true, verified: true };
@@ -135,14 +135,14 @@ function runSerial<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** One generation at a time. Null when the model is missing or fails, so callers fall back. */
-export function ask(system: string, user: string, telemetry?: string): Promise<string | null> {
+export function ask(system: string, user: string, telemetry?: string, history: PetTurn[] = []): Promise<string | null> {
   if (useStore.getState().brain.status !== 'ready') return Promise.resolve(null);
   return runSerial(async () => {
     try {
       const c = await context();
       const completionBegan = Date.now();
       const r = await c.completion({
-        messages: telemetry == null ? [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }] : petMessages(user, telemetry),
+        messages: telemetry == null ? [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }] : petMessages(user, telemetry, history),
         jinja: true,
         enable_thinking: false,
         n_predict: 140,
@@ -191,7 +191,6 @@ export async function downloadModel() {
 
 function facts(): string {
   const s = useStore.getState();
-  if (s.dataSource === 'sim') return 'Modo SIMULACIÓN. Los números de sensores son ficticios; no son mediciones del usuario y no permiten valorar su salud física.';
   const vitals = (Object.keys(METRIC_META) as MetricKey[])
     .filter((k) => s.metrics[k] != null)
     .map((k) => `${METRIC_META[k].label} ${s.metrics[k]} ${METRIC_META[k].unit}`);
@@ -200,13 +199,17 @@ function facts(): string {
     ? `ánimo ${last.mood}/5, estrés ${last.stress}/5${last.bereavement ? ', recibió una mala noticia familiar' : ''}`
     : 'sin check-in';
   const protocols = s.protocols.filter((p) => !s.done.includes(p.id)).map((p) => p.title);
-  return `Signos: ${vitals.join(', ') || 'sin datos'}. Último check-in: ${checkin}. Protocolos activos: ${protocols.join('; ') || 'ninguno'}.`;
+  const source = s.dataSource === 'sim' ? 'Datos simulados (demo); el usuario ya lo sabe. ' : '';
+  return `${source}Signos: ${vitals.join(', ') || 'sin datos'}. Último check-in: ${checkin}. Protocolos activos: ${protocols.join('; ') || 'ninguno'}.`;
 }
 
 /** Fallback chain: on-device model, then the hub's pet brain, then canned replies. */
 export async function petReply(text: string): Promise<string> {
   if (CRISIS.test(text)) return CRISIS_REPLY;
-  const llm = await ask(SYSTEM, text, facts());
+  // last turns so it follows the conversation; the newest 'me' is `text` itself (ChatScreen adds it first)
+  // old disclaimer replies are dropped, or the model keeps echoing them
+  const history = useStore.getState().chat.slice(-7, -1).filter((m) => !(m.from === 'pet' && /simulaci/i.test(m.text)));
+  const llm = await ask(SYSTEM, text, facts(), history);
   if (llm) return llm;
   const remote = await askPet(text);
   return remote && !hasPhysicalRoleConfusion(remote) ? remote : canned(text);
