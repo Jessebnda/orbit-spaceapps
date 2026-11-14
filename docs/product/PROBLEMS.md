@@ -3,7 +3,7 @@
 Actualizado: 2026-11-14. Evidencia de esta sesión; no son estimaciones permanentes.
 
 ## Memoria de la Mac
-- [x] Identificar modelos: Mac Qwen3.8-Flash-Next (GGUF 92 GB, streaming expertos); móvil Qwen3-0.6B Q8_0. No hay segundo proceso local de 0.6B en la Mac.
+- [x] Identificar modelos: Mac Qwen3.8-Flash-Next (GGUF 92 GB, streaming expertos); móvil Bonsai-4B Q1_0 (antes Qwen3-0.6B Q8_0). No hay segundo proceso local de 0.6B en la Mac.
 - [x] Detener lectores de logs del agente: PID53339 consumía ~1.6 GiB RSS; PID53004 también cerrado. No dejar syslog continuo sin límite.
 - [x] Verificar memoria completa del servidor Mac: PID40580 dormido, RSS ~47MiB, pero footprint5.6GiB y pico18.5GiB; vmmap atribuye5.6GiB a swapped writable memory. RSS solo no representa su consumo.
 - [x] Liberar servidor dormido PID40580: swap bajó de9.2GB a3.4GB tras SIGTERM, sin generación activa. El asistente puede reiniciarlo bajo demanda.

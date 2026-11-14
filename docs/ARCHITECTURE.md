@@ -71,7 +71,7 @@ Esto dispara el protocolo mental `connect_crew` y aparece en el dashboard.
 
 | Dónde | Modelo | Para qué |
 |---|---|---|
-| Celular | Qwen3-0.6B (llama.rn, ~640 MB, se baja al cel) | Mascota/mentor, privado, sin red |
+| Celular | Bonsai-4B 1-bit (llama.rn, ~572 MB, se baja al cel) | Mascota/mentor, privado, sin red |
 | Mac capitán | Qwen 3.8 Flash Next (fork npanj/llama.cpp) | Asistente de análisis con tools |
 | Mac capitán | multilingual-e5-small (~120 MB, transformers.js) | Embeddings para el RAG en pgvector |
 
@@ -113,7 +113,7 @@ Docker Desktop tiene ~12 GB asignados a su VM: bájalo a 2 GB (Settings → Reso
 
 | Pieza | Cuándo | Libera |
 |---|---|---|
-| Qwen3-0.6B (llama.rn, n_ctx 2048) | 1er mensaje a la mascota o al iniciar sesión | `release()` tras 2 min sin uso o al ir a background |
+| Bonsai-4B Q1_0 (llama.rn, n_ctx 2048) | 1er mensaje a la mascota o al iniciar sesión | `release()` tras 2 min sin uso o al ir a background |
 | Juego | pantalla enfocada | loop parado al salir |
 | Escaneo BLE de proximidad | app en primer plano | se pausa en background (las 3 ESP32 propias siguen conectadas) |
 | Historial | 24 h a 1 muestra/min | ring buffer, AsyncStorage solo guarda agregados |

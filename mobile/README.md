@@ -72,7 +72,7 @@ Pensado para correr todo el día en un teléfono con poca RAM y batería, en la 
 
 - Probar BLE y llama.rn en un build de desarrollo y en un teléfono real, no solo en simulador.
 - Los umbrales son genéricos (los de `@orbit/shared`); reemplazar por los valores del equipo.
-- La descarga del modelo (Qwen3-0.6B Q8_0) pide conexión a internet; el resto de la app no la necesita.
+- La descarga del modelo (Bonsai-4B Q1_0, 572 MB) pide conexión a internet; el resto de la app no la necesita.
 
 ## Diagnosticar el arranque en iPhone
 

@@ -94,6 +94,7 @@ async function modelComplete(path: string): Promise<boolean> {
 }
 
 export async function checkModel() {
+  for (const f of ENV.petLegacyFiles) await FileSystem.deleteAsync(`${FileSystem.documentDirectory}${f}`, { idempotent: true });
   const ok = await modelComplete(MODEL_PATH);
   if (!ok) await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });
   useStore.getState().setBrain({ status: ok ? 'ready' : 'none' });
