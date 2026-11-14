@@ -104,10 +104,11 @@ export function CheckInScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 }}>
-        <Press label="Cancelar" onPress={() => nav.goBack()}><Text style={font('body', color.accentText)}>Cancelar</Text></Press>
+      {/* iOS sheet nav bar: clears the grabber, 44 pt targets, titles centred between equal-width sides */}
+      <View style={{ height: 56, marginTop: 14, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
+        <Press label="Cancelar" onPress={() => nav.goBack()} style={{ flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: 12 }}><Text style={font('body', color.accentText)}>Cancelar</Text></Press>
         <Text style={font('button')} accessibilityRole="header">Check-in</Text>
-        <Press label="Enviar check-in" haptic="light" onPress={submit}><Text style={font('button', color.accentText)}>Enviar</Text></Press>
+        <Press label="Enviar check-in" haptic="light" onPress={submit} style={{ flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 12 }}><Text style={font('button', color.accentText)}>Enviar</Text></Press>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 32 }}>
         <Card pad={20} style={{ minHeight: 300, justifyContent: 'center' }}>
