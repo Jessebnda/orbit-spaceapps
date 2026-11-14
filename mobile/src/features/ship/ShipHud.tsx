@@ -65,17 +65,17 @@ export function ShipHud() {
     const step = Math.max(1, Math.ceil(all.length / 60)); // ~60 points is plenty for an 84 pt line
     const values = all.filter((_, i) => i % step === 0 || i === all.length - 1);
     return (
-      <View key={k} accessible accessibilityLabel={`${METRIC_META[k].label} ${v == null ? 'sin dato' : v.toFixed(METRIC_META[k].decimals)} ${METRIC_META[k].unit}, ${STATUS_LABEL[st]}`} style={{ flex: 1, padding: 8, justifyContent: 'center', gap: 2, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: bad ? color.surface : undefined }}>
+      <View key={k} accessible accessibilityLabel={`${METRIC_META[k].label} ${v == null ? 'sin dato' : v.toFixed(METRIC_META[k].decimals)} ${METRIC_META[k].unit}, ${STATUS_LABEL[st]}`} style={{ flex: 1, paddingHorizontal: 8, paddingVertical: 4, justifyContent: 'center', borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: bad ? color.surface : undefined }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {ICON[k] ? <View style={{ width: 18, alignItems: 'center' }}><Icon name={ICON[k]!} size={14} color={bad ? color.status[st] : color.muted} /></View> : null}
           <Text style={{ ...font('caption', color.muted), flexShrink: 1 }} numberOfLines={1}>{SHORT[k]} · {METRIC_META[k].unit}</Text>
           {bad ? <StatusMark label={STATUS_LABEL[st]} tone={st} compact /> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), fontSize: 40, lineHeight: 44, flex: 1 }} numberOfLines={1} adjustsFontSizeToFit>
+          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
             {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           </Text>
-          <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
+          <Sparkline values={values} width={64} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
         </View>
       </View>
     );
