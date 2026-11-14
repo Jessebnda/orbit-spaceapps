@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -77,7 +78,7 @@ function MoodShape({ mood, onChange }: { mood: Score; onChange: (s: Score) => vo
 }
 
 const Ends = ({ a, b }: { a: string; b: string }) => (
-  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 }}>
     <Text style={font('small', color.muted)}>{a}</Text>
     <Text style={font('small', color.muted)}>{b}</Text>
   </View>
@@ -102,33 +103,33 @@ export function CheckInScreen() {
     nav.goBack();
   };
 
-  // native sheet header: iOS places Cancel/Send and the title itself, no manual padding
-  useLayoutEffect(() => {
-    nav.setOptions({
-      title: 'Check-in',
-      headerLeft: () => <Press label="Cancelar" onPress={() => nav.goBack()}><Text style={font('body', color.accentText)}>Cancelar</Text></Press>,
-      headerRight: () => <Press label="Enviar check-in" haptic="light" onPress={submit}><Text style={font('button', color.accentText)}>Enviar</Text></Press>,
-    });
-  }, [nav, submit]);
-
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
+      {/* iOS sheet nav bar: clears the grabber, 44 pt targets, titles centred between equal-width sides */}
+      {/* measured on the view itself: 0 inside a real sheet, status bar/island height if shown full screen */}
+      <SafeAreaView edges={['top']}>
+      <View style={{ height: 56, marginTop: 14, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
+        <Press label="Cancelar" onPress={() => nav.goBack()} style={{ flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: 12 }}><Text style={font('body', color.accentText)}>Cancelar</Text></Press>
+        <Text style={font('button')} accessibilityRole="header">Check-in</Text>
+        <Press label="Enviar check-in" haptic="light" onPress={submit} style={{ flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: 12 }}><Text style={font('button', color.accentText)}>Enviar</Text></Press>
+      </View>
+      </SafeAreaView>
       <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 32 }}>
         <Card pad={20} style={{ minHeight: 300, justifyContent: 'center' }}>
           <MoodShape mood={mood} onChange={setMood} />
         </Card>
 
-        <Card pad={16} style={{ gap: 12 }}>
+        <View style={{ gap: 8 }}>
           <Text style={font('section')}>Estrés</Text>
           <SegmentedTabs tabs={SCORES.map((s) => ({ key: String(s), label: String(s) }))} active={String(stress)} onChange={(k) => setStress(Number(k) as Score)} />
           <Ends a="Tranquilo" b="Muy alto" />
-        </Card>
+        </View>
 
-        <Card pad={16} style={{ gap: 12 }}>
+        <View style={{ gap: 8 }}>
           <Text style={font('section')}>Perspectiva de la misión</Text>
           <SegmentedTabs tabs={SCORES.map((s) => ({ key: String(s), label: String(s) }))} active={String(outlook)} onChange={(k) => setOutlook(Number(k) as Score)} />
           <Ends a="Pesimista" b="Optimista" />
-        </Card>
+        </View>
 
         <FormSection title="Lo que quieras contar">
           <LabeledRow label="Molestias">

@@ -40,7 +40,7 @@ export default function App() {
               <Root.Screen
                 name="CheckIn"
                 component={CheckInScreen}
-                options={{ presentation: 'formSheet', headerShown: true, headerTransparent: false, headerStyle: { backgroundColor: color.bg }, headerTintColor: color.accent, headerTitleStyle: { color: color.text, fontWeight: '600' }, sheetAllowedDetents: [0.92], sheetGrabberVisible: true, sheetCornerRadius: radius.sheet, contentStyle: { backgroundColor: color.bg } }}
+                options={{ presentation: 'formSheet', sheetAllowedDetents: [0.92], sheetGrabberVisible: true, sheetCornerRadius: radius.sheet, contentStyle: { backgroundColor: color.bg } }}
               />
             </Root.Navigator>
           </NavigationContainer>
