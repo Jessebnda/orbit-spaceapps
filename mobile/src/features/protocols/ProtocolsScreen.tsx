@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { PROTOCOL_KIND_LABEL, type Protocol, type ProtocolKind } from '@orbit/shared';
 import { send, sendStat } from '../../services/hub';
@@ -104,7 +104,8 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2,
 export function ProtocolDetailScreen() {
   const nav = useNavigation<Nav>();
   const { params } = useRoute<{ key: string; name: string; params: { id: string } }>();
-  const insets = useSafeAreaInsets();
+  const tabBar = useBottomTabBarHeight(); // native tab bar overlays this pushed screen
+  const [footer, setFooter] = useState(110);
   const drill = params.id === 'drill';
   const stored = useStore((s) => s.protocols.find((x) => x.id === params.id));
   const p = drill ? DRILL : stored;
@@ -146,7 +147,7 @@ export function ProtocolDetailScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, paddingBottom: 120, gap: 24 }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, paddingBottom: tabBar + footer + 24, gap: 24 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
           <View style={{ flex: 1, gap: 6 }}>
             <Text style={font('title')}>{p.title}</Text>
@@ -188,7 +189,7 @@ export function ProtocolDetailScreen() {
         {p.guide === 'cpr' || drill ? <Card><CprGuide /></Card> : null}
       </ScrollView>
 
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 8, backgroundColor: color.bg, gap: 6 }}>
+      <View onLayout={(e) => setFooter(e.nativeEvent.layout.height)} style={{ position: 'absolute', left: 0, right: 0, bottom: tabBar, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: color.bg, gap: 6 }}>
         {missing > 0 ? <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>Faltan {missing} paso{missing > 1 ? 's' : ''}</Text> : null}
         <Press label={drill ? 'Registrar simulacro' : 'Marcar como hecho'} disabled={missing > 0} onPress={finish} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={font('button', color.onAccent)}>{drill ? 'Registrar simulacro' : 'Marcar como hecho'}</Text>
