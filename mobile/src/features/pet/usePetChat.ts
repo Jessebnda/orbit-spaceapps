@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { petReply } from '../../services/petBrain';
 import { useStore } from '../../store/store';
 
@@ -7,10 +7,13 @@ export function usePetChat() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // state updates are async: taps queued while the JS thread is busy all read a stale `busy`/`text`, so guard with a ref
+  const sending = useRef(false);
 
   const send = async (suggestion?: string) => {
     const t = (suggestion ?? text).trim();
-    if (!t || busy) return;
+    if (!t || busy || sending.current) return;
+    sending.current = true;
     setText('');
     setBusy(true);
     setError(null);
@@ -29,6 +32,7 @@ export function usePetChat() {
       setText((draft) => draft || t);
     } finally {
       if (timeout) clearTimeout(timeout);
+      sending.current = false;
       setBusy(false);
     }
   };

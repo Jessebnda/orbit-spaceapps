@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import type { LlamaContext } from 'llama.rn';
 import { METRIC_META, type MetricKey } from '@orbit/shared';
@@ -107,7 +108,8 @@ function context(): Promise<LlamaContext> {
   if (!loading) {
     const init = llamaInitializer();
     if (!init) return Promise.reject(new Error('Modelo local no disponible'));
-    loading = init({ model: MODEL_PATH.replace('file://', ''), n_ctx: ENV.petContextTokens, use_mlock: false })
+    // Android: GPU offload put a 572 MB model into ~1.7 GB of graphics memory and froze the phone; the CPU path is lighter.
+    loading = init({ model: MODEL_PATH.replace('file://', ''), n_ctx: ENV.petContextTokens, use_mlock: false, ...(Platform.OS === 'android' ? { n_gpu_layers: 0 } : {}) })
       .then((c) => (ctx = c))
       .finally(() => {
         loading = null;
