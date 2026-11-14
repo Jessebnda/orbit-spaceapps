@@ -4,7 +4,7 @@ import { METRIC_META, statusOf, worstStatus, type MetricKey } from '@orbit/share
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useStore } from '../../store/store';
-import { color, font, radius, STATUS_LABEL } from '../../theme';
+import { color, figureFont, font, radius, STATUS_LABEL } from '../../theme';
 import { Creature } from '../pet/Creature';
 import { petMood } from '../../domain/derive';
 import { usePetChat } from '../pet/usePetChat';
@@ -12,6 +12,8 @@ import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { SosButton } from '../../components/ui/SosButton';
 import { StatusMark } from '../../components/ui/StatusMark';
+import { Ring } from '../../components/ui/Ring';
+import { RangeStrip } from '../../components/ui/RangeStrip';
 
 const HUD: MetricKey[] = ['hr', 'spo2', 'bpSys', 'resp', 'temp'];
 const LINKS = [
@@ -38,13 +40,18 @@ export function ShipHud() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     useStore.getState().setChecked(current.id, [...idx, stepIdx]);
   };
-  const cell = (k: MetricKey | 'sleeve') => {
-    if (k === 'sleeve') {
-      const on = !!devices.sleeve;
+  const inRange = HUD.filter((k) => metrics[k] != null && statusOf(k, metrics[k]) === 'ok').length;
+  const cell = (k: MetricKey | 'summary') => {
+    if (k === 'summary') {
       return (
-        <View key="sleeve" style={{ flex: 1, padding: 8, gap: 2 }}>
-          <Text style={font('caption', color.muted)}>Manga</Text>
-          <Text style={font('section', on ? color.text : color.faint)}>{on ? 'Conectada' : 'Sin señal'}</Text>
+        <View key="summary" accessible accessibilityLabel={`${inRange} de ${HUD.length} vitales en rango`} style={{ flex: 1, padding: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Ring size={76} stroke={8} value={inRange / HUD.length} tint={overall === 'ok' ? color.accent : color.status[overall]}>
+            <Text style={figureFont('title')}>{inRange}/{HUD.length}</Text>
+          </Ring>
+          <View>
+            <Text style={font('caption', color.muted)}>Vitales</Text>
+            <Text style={font('section')}>en rango</Text>
+          </View>
         </View>
       );
     }
@@ -62,10 +69,11 @@ export function ShipHud() {
           {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           <Text style={font('body', color.muted)}> {METRIC_META[k].unit}</Text>
         </Text>
+        <RangeStrip metric={k} value={v} />
       </View>
     );
   };
-  const slots: (MetricKey | 'sleeve')[] = [...HUD, 'sleeve'].slice(0, 6) as (MetricKey | 'sleeve')[];
+  const slots: (MetricKey | 'summary')[] = ['summary', ...HUD]; // slow metrics (sleep, activity) live in Hoy
 
   return (
     /* only lifts the layout while chatting; otherwise it must never add bottom padding (it pushed SOS off screen) */
