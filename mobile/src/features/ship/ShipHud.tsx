@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 import { METRIC_META, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -7,6 +7,7 @@ import { useStore } from '../../store/store';
 import { color, font, radius, STATUS_LABEL } from '../../theme';
 import { Creature } from '../pet/Creature';
 import { petMood } from '../../domain/derive';
+import { usePetChat } from '../pet/usePetChat';
 import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { SosButton } from '../../components/ui/SosButton';
@@ -25,6 +26,7 @@ export function ShipHud() {
   const { metrics, devices, hubOnline, protocols, done, checked, checkins } = useStore();
   const insets = useSafeAreaInsets();
   const [col3, setCol3] = useState(180);
+  const [talking, setTalking] = useState(false);
   const overall = worstStatus(metrics);
   const pending = protocols.filter((p) => !done.includes(p.id));
   const current = pending[0];
@@ -66,6 +68,7 @@ export function ShipHud() {
   const slots: (MetricKey | 'sleeve')[] = [...HUD, 'sleeve'].slice(0, 6) as (MetricKey | 'sleeve')[];
 
   return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
     <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: Math.max(insets.top, 8), paddingBottom: Math.max(insets.bottom, 8), paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16), gap: 8 }}>
       <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -87,6 +90,7 @@ export function ShipHud() {
           {[slots.slice(0, 3), slots.slice(3, 6)].map((row, i) => <View key={i} style={{ flex: 1, flexDirection: 'row' }}>{row.map(cell)}</View>)}
         </View>
 
+        {talking ? <ShipChat onClose={() => setTalking(false)} /> : (
         <View style={{ flex: 1.2, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 14, gap: 8, justifyContent: 'space-between' }}>
           {current ? (
             <>
@@ -113,11 +117,57 @@ export function ShipHud() {
             </View>
           )}
         </View>
+        )}
 
         <View style={{ flex: 0.8, justifyContent: 'space-between', alignItems: 'center' }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
-          <View style={{ height: 64 }}><Creature size={64} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
+          <Press label={talking ? 'Cerrar chat con Orbi' : 'Hablar con Orbi'} haptic="light" onPress={() => setTalking((t) => !t)} style={{ alignItems: 'center', gap: 2 }}>
+            <View style={{ height: 64 }}><Creature size={64} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
+            <Text style={font('small', color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
+          </Press>
           <SosButton large width={col3} />
         </View>
+      </View>
+    </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+/** Chat compacto en el lugar del protocolo; el dictado del teclado de iOS permite hablarle sin teclear. */
+function ShipChat({ onClose }: { onClose: () => void }) {
+  const chat = useStore((s) => s.chat);
+  const { text, setText, busy, error, send } = usePetChat();
+  const list = useRef<FlatList>(null);
+  return (
+    <View style={{ flex: 1.2, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 10, gap: 8 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={font('caption', color.muted)}>Orbi</Text>
+        <Press label="Cerrar chat" onPress={onClose} style={{ minHeight: 32, justifyContent: 'center', paddingHorizontal: 6 }}><Text style={font('small', color.accentText)}>Cerrar</Text></Press>
+      </View>
+      <FlatList
+        ref={list}
+        style={{ flex: 1 }}
+        data={chat.slice(-20)}
+        keyExtractor={(m, i) => `${m.ts}${i}`}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: 6, flexGrow: 1, justifyContent: 'flex-end' }}
+        onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
+        ListEmptyComponent={<Text style={font('body', color.muted)}>Pregúntale algo a Orbi.</Text>}
+        ListFooterComponent={busy ? <Text accessibilityLiveRegion="polite" style={font('small', color.muted)}>Orbi está escribiendo…</Text> : null}
+        renderItem={({ item: m }) => {
+          const mine = m.from === 'me';
+          return (
+            <View style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '88%', backgroundColor: mine ? color.accent : color.raised, borderRadius: 14, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={font('small', mine ? color.onAccent : color.text)}>{m.text}</Text>
+            </View>
+          );
+        }}
+      />
+      {error ? <Text accessibilityRole="alert" style={font('small', color.status.watch)} numberOfLines={2}>{error}</Text> : null}
+      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+        <TextInput accessibilityLabel="Mensaje para Orbi" value={text} onChangeText={setText} onSubmitEditing={() => void send()} returnKeyType="send" placeholder="Escribe o dicta" placeholderTextColor={color.faint} style={{ ...font('body'), flex: 1, height: 40, backgroundColor: color.raised, borderRadius: 20, paddingHorizontal: 12 }} />
+        <Press label="Enviar mensaje" haptic="light" onPress={() => void send()} disabled={busy || !text.trim()} style={{ width: 44, height: 40, borderRadius: 20, backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="arrow.up" size={18} color={color.onAccent} />
+        </Press>
       </View>
     </View>
   );

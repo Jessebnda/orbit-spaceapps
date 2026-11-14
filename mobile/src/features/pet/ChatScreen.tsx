@@ -3,7 +3,8 @@ import { FlatList, Keyboard, KeyboardAvoidingView, Platform, Text, TextInput, Vi
 import { useHeaderHeight } from '@react-navigation/elements';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
-import { petReply, warmModel } from '../../services/petBrain';
+import { warmModel } from '../../services/petBrain';
+import { usePetChat } from './usePetChat';
 import { useStore } from '../../store/store';
 import { color, font } from '../../theme';
 import { Icon } from '../../components/ui/Icon';
@@ -40,42 +41,14 @@ export function ChatScreen() {
   };
   useEffect(() => { void checkLocal(); }, []);
 
-  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
+  const { text, setText, busy, error, send } = usePetChat();
   const list = useRef<FlatList>(null);
   const data = chat;
-
-  const send = async (suggestion?: string) => {
-    const t = (suggestion ?? text).trim();
-    if (!t || busy) return;
-    setText('');
-    setBusy(true);
-    setError(null);
-    useStore.getState().addChat({ from: 'me', text: t, ts: Date.now() });
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const deadline = new Promise<string>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error('reply-timeout')), 30_000);
-      });
-      const reply = await Promise.race([petReply(t), deadline]);
-      useStore.getState().addChat({ from: 'pet', text: reply, ts: Date.now() });
-    } catch (e) {
-      setError(e instanceof Error && e.message === 'reply-timeout'
-        ? 'Orbi está tardando más de lo esperado. Tu mensaje sigue abajo para reintentarlo.'
-        : 'Orbi no pudo responder. Tu mensaje sigue abajo para reintentarlo.');
-      setText(draft => draft || t);
-    } finally {
-      if (timeout) clearTimeout(timeout);
-      setBusy(false);
-    }
-
-  };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0} style={{ flex: 1 }}>
