@@ -72,10 +72,10 @@ export function ShipHud() {
           {bad ? <StatusMark label={STATUS_LABEL[st]} tone={st} compact /> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), flex: 1 }} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), fontSize: 52, lineHeight: 56, flex: 1 }} numberOfLines={1}>
             {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           </Text>
-          <Sparkline values={values} width={64} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
+          <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
         </View>
       </View>
     );
@@ -110,7 +110,7 @@ export function ShipHud() {
           {[slots.slice(0, 2), slots.slice(2, 4), slots.slice(4, 6)].map((row, i) => <View key={i} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>{row.map(cell)}</View>)}
         </View>
 
-        <View style={{ flex: 1.4, gap: 8 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
+        <View style={{ flex: 1.2, gap: 8 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
         {talking ? <ShipChat onClose={() => setTalking(false)} /> : (
         <View style={{ flex: 1, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 14, gap: 8, justifyContent: 'space-between' }}>
           {current ? (
