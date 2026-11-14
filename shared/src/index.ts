@@ -218,7 +218,7 @@ export type HubMsg =
   | { t: 'protocol'; crewId: string; protocol: Protocol }
   | { t: 'emergency'; emergency: Emergency }
   | { t: 'pet_reply'; crewId: string; text: string }
-  | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] };   // captain only
+  | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] }    // captain only
   | { t: 'self'; snapshot: CrewSnapshot };                              // to each crew phone, every few seconds
 
 export interface CrewSnapshot {
