@@ -5,6 +5,8 @@ export const ENV = {
   hubUrl: process.env.EXPO_PUBLIC_HUB_URL ?? `ws://192.168.1.50:${HUB_PORT}/ws`, // set at build time to the captain Mac IP
   petModelUrl: 'https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf',
   petModelFile: 'qwen3-0.6b-q8_0.gguf',
+  // shortcut: size check only (catches truncated downloads); pin a HF revision + SHA-256 if the file is ever swapped upstream
+  petModelBytes: 639_446_688,
   /** Memory: the pet context is freed after this idle time, and on background. */
   petIdleMs: 2 * 60_000,
   petContextTokens: 2048,

@@ -87,9 +87,16 @@ const SYSTEM = PET_SYSTEM;
 const SUMMARY = 'Resume en español, en 2 frases cálidas y concretas, estas observaciones semanales de un tripulante. No diagnosticas.';
 
 /** Only checks that the file exists. The model itself loads on the first message. */
+/** A partial file would crash llama.rn on load, so "present" means the exact expected size. */
+async function modelComplete(path: string): Promise<boolean> {
+  const info = await FileSystem.getInfoAsync(path);
+  return info.exists && !info.isDirectory && info.size === ENV.petModelBytes;
+}
+
 export async function checkModel() {
-  const info = await FileSystem.getInfoAsync(MODEL_PATH);
-  useStore.getState().setBrain({ status: info.exists ? 'ready' : 'none' });
+  const ok = await modelComplete(MODEL_PATH);
+  if (!ok) await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });
+  useStore.getState().setBrain({ status: ok ? 'ready' : 'none' });
 }
 
 /** One context at a time. A load in progress is shared, never started twice. */
@@ -162,7 +169,8 @@ export async function downloadModel() {
   st.setBrain({ status: 'downloading', progress: 0 });
   let last = -1;
   try {
-    const res = await FileSystem.createDownloadResumable(ENV.petModelUrl, MODEL_PATH, {}, (p) => {
+    const part = `${MODEL_PATH}.part`; // never expose a half-written model at MODEL_PATH
+    const res = await FileSystem.createDownloadResumable(ENV.petModelUrl, part, {}, (p) => {
       const pct = Math.floor((p.totalBytesWritten / Math.max(1, p.totalBytesExpectedToWrite)) * 100);
       if (pct !== last) {
         last = pct;
@@ -170,8 +178,12 @@ export async function downloadModel() {
       }
     }).downloadAsync();
     if (!res || res.status !== 200) throw new Error(`http ${res?.status}`);
+    if (!(await modelComplete(part))) throw new Error('incomplete model file');
+    await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });
+    await FileSystem.moveAsync({ from: part, to: MODEL_PATH });
     st.setBrain({ status: 'ready', progress: 1 });
   } catch {
+    await FileSystem.deleteAsync(`${MODEL_PATH}.part`, { idempotent: true });
     st.setBrain({ status: 'error', progress: 0 });
   }
 }

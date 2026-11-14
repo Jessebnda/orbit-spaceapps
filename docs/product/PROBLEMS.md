@@ -14,7 +14,7 @@ Actualizado: 2026-11-14. Evidencia de esta sesión; no son estimaciones permanen
 - [x] Confirmar fallo: no existía GGUF en Documents; respuestas no probaban inferencia local.
 - [x] Instalar GGUF Qwen3-0.6B Q8_0 (639446688 bytes; SHA2569465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031) en Documents. Diagnóstico iPhone2026-11-14T20:57Z: gpu=true, local-test-ok y dos local-response; última29tokens/409ms. Servidor Mac apagado.
 - [x] Chat comprueba carga e inferencia local y muestra resultado. model-status.json guarda etapas/timings/tokens sin prompts, respuestas ni salud.
-- [ ] Mejorar descarga: verificar integridad y diferenciar archivo presente de carga exitosa (checkModel antes solo comprobaba existencia).
+- [x] Descarga: se baja a `.part`, se valida tamaño exacto (639446688 B) y solo entonces se mueve; `checkModel` borra archivos incompletos. Pendiente: SHA-256 si cambia el archivo upstream.
 
 ## Interfaz
 - [x] Arranque negro: pods nativos faltantes; recompilado con GestureHandler/Blur/DatePicker.
