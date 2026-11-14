@@ -49,7 +49,7 @@ function onMessage(msg: HubMsg) {
   } else if (msg.t === 'pet_reply') {
     petWaiting.shift()?.(msg.text);
   } else if (msg.t === 'self') {
-    st.setSelf(msg.snapshot);
+    st.setSelf(msg.snapshot, msg.crew ?? []); // ?? : older hub without roster
   }
 }
 

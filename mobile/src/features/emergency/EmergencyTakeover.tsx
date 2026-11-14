@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EMERGENCY_LABEL, type Emergency } from '@orbit/shared';
 import { send } from '../../services/hub';
-import { useStore } from '../../store/store';
+import { useNameOf, useStore } from '../../store/store';
 import { color, font, radius, space } from '../../theme';
 import { Press } from '../../components/ui/Press';
 import { CprGuide } from './CprGuide';
@@ -24,6 +24,7 @@ function EmergencyView({ e }: { e: Emergency }) {
   useKeepAwake();
   const crewId = useStore((s) => s.profile.crewId);
   const insets = useSafeAreaInsets();
+  const nameOf = useNameOf();
   const victim = e.victimId === crewId;
   const rank = e.responders.indexOf(crewId);
   useEffect(() => {
@@ -40,14 +41,14 @@ function EmergencyView({ e }: { e: Emergency }) {
       <Text style={font('caption', color.emergency)}>Emergencia · {EMERGENCY_LABEL[e.kind]}</Text>
       {victim ? (
         <>
-          <Text style={font('hero')}>Se avisó a {e.responders.join(', ') || 'tu equipo'}.</Text>
+          <Text style={font('hero')}>Se avisó a {e.responders.map(nameOf).join(', ') || 'tu equipo'}.</Text>
           <Text style={font('body')}>No te levantes. Respira despacio. Ellos van hacia ti.</Text>
         </>
       ) : (
         <>
           <Text style={font('hero')}>{rank === 0 ? 'Eres el más cercano' : rank > 0 ? `Eres el ${rank + 1}.º más cercano` : 'Alerta cerca de ti'}</Text>
-          <Text style={font('body', color.muted)}>Paciente: {e.victimId}</Text>
-          {e.kind === 'cardiac_arrest' ? <CprGuide /> : <Text style={font('body')}>Acude a {e.victimId} y mantén contacto visual.</Text>}
+          <Text style={font('body', color.muted)}>Paciente: {nameOf(e.victimId)}</Text>
+          {e.kind === 'cardiac_arrest' ? <CprGuide /> : <Text style={font('body')}>Acude a {nameOf(e.victimId)} y mantén contacto visual.</Text>}
         </>
       )}
       <Press label="Marcar como resuelto" onPress={resolve} style={{ backgroundColor: color.raised, borderRadius: radius.md, padding: space.lg, alignItems: 'center' }}>

@@ -16,7 +16,7 @@ export function CrewSummary({ crew, loaded }: { crew: CrewSnapshot[]; loaded: bo
         <dt className="text-caption font-bold text-muted">Fuera de rango</dt>
         <dd className="mt-1 text-figure font-semibold tabular-nums">{dash(String(outOfRange))}</dd>
         <dd className="mt-1 text-small tabular-nums">
-          <span style={{ color: statusColor.critical }}>{count("critical")} críticos</span>
+          <span style={{ color: statusColor.critical }}>{count("critical")} {count("critical") === 1 ? "crítico" : "críticos"}</span>
           <span className="text-faint"> · </span>
           <span style={{ color: statusColor.watch }}>{count("watch")} vigilar</span>
         </dd>

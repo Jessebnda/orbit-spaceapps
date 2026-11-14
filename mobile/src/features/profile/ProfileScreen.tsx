@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { ACHIEVEMENTS, anomalyText, formatMetric, type CrewSnapshot } from '@orbit/shared';
-import { useStore } from '../../store/store';
+import { useNameOf, useStore } from '../../store/store';
 import { color, font, space } from '../../theme';
 import { FeedRow } from '../../components/ui/FeedRow';
 import { FormSection } from '../../components/ui/FormSection';
@@ -18,6 +18,7 @@ type Part = 'perfil' | 'ajustes';
 /** Yo: logros, cifras, exploraciones, análisis y ajustes. */
 export function ProfileScreen() {
   const { profile, unlocked, stats, self, metrics } = useStore();
+  const nameOf = useNameOf();
   const { width } = useWindowDimensions();
   const [part, setPart] = useState<Part>('perfil');
   const xp = ACHIEVEMENTS.filter((a) => unlocked.includes(a.id)).reduce((s, a) => s + a.xp, 0);
@@ -42,7 +43,7 @@ export function ProfileScreen() {
               <FeedRow title="Ejercicio hoy" trailing={<Text style={font('body')}>{formatMetric('activity', metrics.activity)}</Text>} />
               <FeedRow title="Hablaste hoy" trailing={<Text style={font('body')}>{snap ? `${snap.comms.todayMin} min` : '—'}</Text>} />
               {(snap?.comms.anomalies ?? []).map((a, i, arr) => (
-                <FeedRow key={`${a.kind}${i}`} title={anomalyText(a, (id) => id)} last={i === arr.length - 1} />
+                <FeedRow key={`${a.kind}${i}`} title={anomalyText(a, nameOf)} last={i === arr.length - 1} />
               ))}
             </FormSection>
 

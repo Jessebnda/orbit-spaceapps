@@ -51,16 +51,31 @@ export const THRESHOLDS: Record<MetricKey, [number, number, number, number]> = {
 
 export type Status = 'ok' | 'watch' | 'critical';
 
-export function statusOf(key: MetricKey, v: number | undefined): Status {
+/** Daily running totals: their minimums only make sense at the end of the day. */
+export const CUMULATIVE_METRICS: MetricKey[] = ['activity', 'kcal', 'water'];
+
+/** Fraction of the waking day (07:00–22:00 ship time) already elapsed, 0..1. */
+export function dayProgress(now: number): number {
+  const d = new Date(now);
+  return Math.min(1, Math.max(0, (d.getHours() + d.getMinutes() / 60 - 7) / 15));
+}
+
+export function statusOf(key: MetricKey, v: number | undefined, now = Date.now()): Status {
   if (v == null || Number.isNaN(v)) return 'ok';
-  const [cl, wl, wh, ch] = THRESHOLDS[key];
+  let [cl, wl, wh, ch] = THRESHOLDS[key];
+  if (CUMULATIVE_METRICS.includes(key)) {
+    // Pro-rate minimums so 1200 kcal at 11:00 isn't flagged against a full-day target.
+    const f = dayProgress(now);
+    cl = f > 0 ? cl * f : -Infinity; // before 07:00 a zero total is expected, not critical
+    wl *= f;
+  }
   if (v <= cl || (v >= ch && ch !== wh)) return 'critical'; // ch === wh means no upper critical
   if (v < wl || v > wh) return 'watch';
   return 'ok';
 }
 
-export function worstStatus(m: Metrics): Status {
-  const all = (Object.keys(m) as MetricKey[]).map((k) => statusOf(k, m[k]));
+export function worstStatus(m: Metrics, now = Date.now()): Status {
+  const all = (Object.keys(m) as MetricKey[]).map((k) => statusOf(k, m[k], now));
   return all.includes('critical') ? 'critical' : all.includes('watch') ? 'watch' : 'ok';
 }
 
@@ -182,16 +197,16 @@ export type StatEvent =
 
 /** Mission achievements. The phone unlocks them and sends a `stat` achievement event; the hub sums XP for the leaderboard. */
 export const ACHIEVEMENTS = [
-  { id: 'first_checkin', title: 'First log', desc: 'Complete your first daily check-in', xp: 50 },
-  { id: 'checkin_streak_7', title: 'Steady orbit', desc: '7 check-ins in a row', xp: 200 },
-  { id: 'exercise_2h', title: 'Countermeasure', desc: '2 h of exercise in one day', xp: 150 },
-  { id: 'sleep_7h_x3', title: 'Circadian', desc: 'Sleep 7 h+ three nights in a row', xp: 150 },
-  { id: 'protocol_done', title: 'By the book', desc: 'Finish a protocol sent by the ship', xp: 75 },
-  { id: 'pet_session', title: 'Heart to heart', desc: 'Complete a scheduled session with your pet', xp: 100 },
-  { id: 'defender_1000', title: 'Defender', desc: 'Score 1000 in Orbit Defender', xp: 50 },
-  { id: 'first_explore', title: 'Explorer', desc: 'Log your first exploration', xp: 100 },
-  { id: 'explore_10km', title: 'Long walk', desc: '10 km explored in total', xp: 250 },
-  { id: 'cpr_trained', title: 'Lifeline', desc: 'Complete the CPR drill', xp: 200 },
+  { id: 'first_checkin', title: 'Primer registro', desc: 'Completa tu primer check-in diario', xp: 50 },
+  { id: 'checkin_streak_7', title: 'Órbita estable', desc: '7 check-ins seguidos', xp: 200 },
+  { id: 'exercise_2h', title: 'Contramedida', desc: '2 h de ejercicio en un día', xp: 150 },
+  { id: 'sleep_7h_x3', title: 'Circadiano', desc: 'Duerme 7 h o más tres noches seguidas', xp: 150 },
+  { id: 'protocol_done', title: 'Al pie de la letra', desc: 'Termina un protocolo enviado por la nave', xp: 75 },
+  { id: 'pet_session', title: 'De corazón', desc: 'Completa una sesión programada con tu mascota', xp: 100 },
+  { id: 'defender_1000', title: 'Defensor', desc: 'Haz 1000 puntos en Orbit Defender', xp: 50 },
+  { id: 'first_explore', title: 'Explorador', desc: 'Registra tu primera exploración', xp: 100 },
+  { id: 'explore_10km', title: 'Larga caminata', desc: '10 km explorados en total', xp: 250 },
+  { id: 'cpr_trained', title: 'Salvavidas', desc: 'Completa el simulacro de RCP', xp: 200 },
 ] as const;
 export type AchievementId = (typeof ACHIEVEMENTS)[number]['id'];
 
@@ -220,7 +235,7 @@ export type HubMsg =
   | { t: 'emergency'; emergency: Emergency }
   | { t: 'pet_reply'; crewId: string; text: string }
   | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] }    // captain only
-  | { t: 'self'; snapshot: CrewSnapshot };                              // to each crew phone, every few seconds
+  | { t: 'self'; snapshot: CrewSnapshot; crew: CrewMember[] };          // own data + roster so phones show names, not ids                              // to each crew phone, every few seconds
 
 export interface CrewSnapshot {
   member: CrewMember;

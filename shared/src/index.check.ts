@@ -7,8 +7,15 @@ assert.equal(statusOf('hr', 35), 'critical');
 assert.equal(statusOf('spo2', 99), 'ok');           // no upper critical for SpO2
 assert.equal(statusOf('spo2', 90), 'watch');
 assert.equal(statusOf('sleep', 5), 'watch');
-assert.equal(statusOf('activity', 0), 'watch');
+const at = (h: number) => new Date(2026, 10, 14, h).getTime();
+assert.equal(statusOf('activity', 0, at(23)), 'watch');
+assert.equal(statusOf('kcal', 1500, at(11)), 'ok');       // mid-morning: pro-rated
+assert.equal(statusOf('kcal', 1500, at(21)), 'watch');    // evening: real deficit
+assert.equal(statusOf('kcal', 1000, at(23)), 'critical');
+assert.equal(statusOf('water', 0, at(6)), 'ok');          // before the day starts
+assert.equal(statusOf('kcal', 5200, at(9)), 'critical');  // upper limits are not pro-rated
 assert.equal(worstStatus({ hr: 72, spo2: 86 }), 'critical');
+assert.equal(worstStatus({ hr: 72, kcal: 900 }, at(10)), 'ok');
 
 assert.deepEqual(parseBleName('ORB-c2-vest'), { crewId: 'c2', device: 'vest' });
 assert.equal(parseBleName('Galaxy Buds'), null);

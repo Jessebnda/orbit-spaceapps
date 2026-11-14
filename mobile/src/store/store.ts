@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { THRESHOLDS, type CheckIn, type CrewSnapshot, type Device, type Emergency, type MetricKey, type Metrics, type Protocol, type Proximity } from '@orbit/shared';
+import { THRESHOLDS, type CheckIn, type CrewMember, type CrewSnapshot, type Device, type Emergency, type MetricKey, type Metrics, type Protocol, type Proximity } from '@orbit/shared';
 import { ENV } from '../config/env';
 import { dayKey } from '../domain/derive';
 import type { DayStat, Stats } from './types';
@@ -25,6 +25,8 @@ type State = {
   peers: Proximity[];
   hubOnline: boolean;
   self: CrewSnapshot | null;
+  /** Roster from the hub so screens show names, not crew ids. */
+  crew: CrewMember[];
   emergency: Emergency | null;
   activeSession: string | null;
   toast: string | null;
@@ -49,7 +51,7 @@ type State = {
   setDevice: (d: Device, on: boolean) => void;
   setPeers: (p: Proximity[]) => void;
   setHubOnline: (on: boolean) => void;
-  setSelf: (s: CrewSnapshot) => void;
+  setSelf: (s: CrewSnapshot, crew: CrewMember[]) => void;
   setEmergency: (e: Emergency | null) => void;
   setBrain: (b: Partial<Brain>) => void;
   addCheckIn: (c: CheckIn) => void;
@@ -69,7 +71,7 @@ type State = {
 };
 
 /** Only these reach AsyncStorage. `metrics`, `peers`, `self`, `emergency` stay in memory. */
-type Persisted = Pick<State, 'profile' | 'missionStart' | 'hubUrl' | 'dataSource' | 'history' | 'days' | 'checkins' | 'protocols' | 'done' | 'checked' | 'stats' | 'explorations' | 'unlocked' | 'chat' | 'sessions'>;
+type Persisted = Pick<State, 'profile' | 'missionStart' | 'hubUrl' | 'dataSource' | 'history' | 'days' | 'checkins' | 'protocols' | 'done' | 'checked' | 'stats' | 'explorations' | 'unlocked' | 'chat' | 'sessions' | 'crew'>;
 
 // Writes are debounced and skipped when unchanged, so the 2 s vitals stream never reaches disk.
 let pendingWrite: ReturnType<typeof setTimeout> | null = null;
@@ -110,6 +112,7 @@ export const useStore = create<State>()(
       peers: [],
       hubOnline: false,
       self: null,
+      crew: [],
       emergency: null,
       activeSession: null,
       toast: null,
@@ -148,10 +151,10 @@ export const useStore = create<State>()(
       setDevice: (d, on) => set((s) => ({ devices: { ...s.devices, [d]: on } })),
       setPeers: (peers) => set({ peers }),
       setHubOnline: (hubOnline) => set({ hubOnline }),
-      setSelf: (self) => set((s) => {
+      setSelf: (self, crew) => set((s) => {
         // Today's comms total is kept per day so the behaviour analysis can compare days.
         const day = dayKey(Date.now());
-        return { self, days: { ...s.days, [day]: { ...s.days[day], comms: self.comms.todayMin } } };
+        return { self, crew, days: { ...s.days, [day]: { ...s.days[day], comms: self.comms.todayMin } } };
       }),
       setEmergency: (emergency) => set({ emergency }),
       setBrain: (b) => set((s) => ({ brain: { ...s.brain, ...b } })),
@@ -183,8 +186,14 @@ export const useStore = create<State>()(
       partialize: (s): Persisted => ({
         profile: s.profile, missionStart: s.missionStart, hubUrl: s.hubUrl, dataSource: s.dataSource, history: s.history, days: s.days,
         checkins: s.checkins, protocols: s.protocols, done: s.done, checked: s.checked, stats: s.stats,
-        explorations: s.explorations, unlocked: s.unlocked, chat: s.chat, sessions: s.sessions,
+        explorations: s.explorations, unlocked: s.unlocked, chat: s.chat, sessions: s.sessions, crew: s.crew,
       }),
     },
   ),
 );
+
+/** crewId -> display name, falling back to the id while the roster hasn't arrived. */
+export const useNameOf = () => {
+  const crew = useStore((s) => s.crew);
+  return (id: string) => crew.find((m) => m.id === id)?.name ?? id;
+};
