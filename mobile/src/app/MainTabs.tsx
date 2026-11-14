@@ -1,5 +1,5 @@
-import type { ComponentType } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useState, type ComponentType } from 'react';
+import { Platform, type ImageSourcePropType } from 'react-native';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,16 +82,30 @@ const YoPage = page('Yo', ProfileScreen, (nav) => ({
   </>
 ));
 
-/** Icono de pestaña: SF Symbol en iOS (el sistema usa la variante .fill al seleccionar), imagen Ionicons en Android. */
-const tabIcon = (name: IconName) => () =>
-  Platform.OS === 'ios' ? { sfSymbol: name } : (Ionicons as unknown as { getImageSourceSync: (n: string, s: number, c: string) => never }).getImageSourceSync(ANDROID[name], 24, color.muted);
+/** Android needs a bitmap per tab and @expo/vector-icons only renders them async (no getImageSourceSync), so they load once before the tabs mount. */
+const TAB_ICONS: IconName[] = ['heart.text.square', 'pawprint', 'list.bullet.clipboard', 'gamecontroller', 'person.crop.circle'];
+function useAndroidTabIcons(): Record<string, ImageSourcePropType> | null {
+  const [icons, setIcons] = useState<Record<string, ImageSourcePropType> | null>(null);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let live = true;
+    Promise.all(TAB_ICONS.map((n) => Ionicons.getImageSource(ANDROID[n], 24, color.muted) as Promise<ImageSourcePropType>))
+      .then((r) => { if (live) setIcons(Object.fromEntries(TAB_ICONS.map((n, i) => [n, r[i]]))); })
+      .catch(() => { if (live) setIcons({}); }); // icons are cosmetic: never block the app on them
+    return () => { live = false; };
+  }, []);
+  return icons;
+}
 
 /** Cinco pestañas nativas: Hoy · Mascota · Protocolos · Juego · Yo. Check-in es una acción de Hoy (hoja), no un destino. */
 export function MainTabs() {
   const protocols = useStore((s) => s.protocols);
   const done = useStore((s) => s.done);
   const pending = protocols.filter((p) => !done.includes(p.id));
+  const androidIcons = useAndroidTabIcons();
+  const tabIcon = (name: IconName) => () => (Platform.OS === 'ios' ? { sfSymbol: name } : androidIcons?.[name]) as never;
   const badge = pending.length ? (pending.some((p) => p.kind === 'emergency') ? '•' : String(pending.length)) : undefined;
+  if (Platform.OS === 'android' && !androidIcons) return null;
   return (
     <Tab.Navigator screenOptions={{ tabBarActiveTintColor: color.accent, sceneStyle: { backgroundColor: color.bg } }}>
       <Tab.Screen name="Hoy" component={HoyPage} options={{ title: 'Hoy', tabBarIcon: tabIcon('heart.text.square') }} />
