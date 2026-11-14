@@ -1,13 +1,12 @@
 {
   "name": "orbit",
   "private": true,
-  "workspaces": ["shared", "hub", "dashboard", "mobile"],
   "scripts": {
     "db": "docker compose up -d",
-    "hub": "npm -w hub run dev",
-    "sim": "npm -w hub run sim",
-    "dashboard": "npm -w dashboard run dev",
-    "mobile": "npm -w mobile run start",
-    "check": "npm -w shared run check"
+    "hub": "npm --prefix hub run dev",
+    "sim": "npm --prefix hub run sim",
+    "dashboard": "npm --prefix dashboard run dev",
+    "mobile": "npm --prefix mobile run start",
+    "check": "npx --yes tsx shared/src/index.check.ts"
   }
 }

@@ -179,6 +179,21 @@ export type StatEvent =
   | { type: 'achievement'; id: string }
   | { type: 'exploration'; title: string; km: number; minutes: number; place: string };
 
+/** Mission achievements. The phone unlocks them and sends a `stat` achievement event; the hub sums XP for the leaderboard. */
+export const ACHIEVEMENTS = [
+  { id: 'first_checkin', title: 'First log', desc: 'Complete your first daily check-in', xp: 50 },
+  { id: 'checkin_streak_7', title: 'Steady orbit', desc: '7 check-ins in a row', xp: 200 },
+  { id: 'exercise_2h', title: 'Countermeasure', desc: '2 h of exercise in one day', xp: 150 },
+  { id: 'sleep_7h_x3', title: 'Circadian', desc: 'Sleep 7 h+ three nights in a row', xp: 150 },
+  { id: 'protocol_done', title: 'By the book', desc: 'Finish a protocol sent by the ship', xp: 75 },
+  { id: 'pet_session', title: 'Heart to heart', desc: 'Complete a scheduled session with your pet', xp: 100 },
+  { id: 'defender_1000', title: 'Defender', desc: 'Score 1000 in Orbit Defender', xp: 50 },
+  { id: 'first_explore', title: 'Explorer', desc: 'Log your first exploration', xp: 100 },
+  { id: 'explore_10km', title: 'Long walk', desc: '10 km explored in total', xp: 250 },
+  { id: 'cpr_trained', title: 'Lifeline', desc: 'Complete the CPR drill', xp: 200 },
+] as const;
+export type AchievementId = (typeof ACHIEVEMENTS)[number]['id'];
+
 /* ───────────── Wire protocol (WebSocket, JSON) ─────────────
  * Phones and the dashboard connect to ws://<hub-lan-ip>:8787. Works fully offline on the ship LAN.
  */
@@ -204,6 +219,7 @@ export type HubMsg =
   | { t: 'emergency'; emergency: Emergency }
   | { t: 'pet_reply'; crewId: string; text: string }
   | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] };   // captain only
+  | { t: 'self'; snapshot: CrewSnapshot };                              // to each crew phone, every few seconds
 
 export interface CrewSnapshot {
   member: CrewMember;
