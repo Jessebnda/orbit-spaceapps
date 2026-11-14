@@ -93,16 +93,32 @@ curl -s localhost:8080/v1/chat/completions -H 'content-type: application/json' \
 
 Tools del agente: `get_crew_overview`, `get_member_history`, `get_comms`, `search_knowledge` (RAG), `list_protocols`, `trigger_protocol`, `create_protocol`.
 
-## 7. RAM en la Mac del capitán
+## 7. Memoria: todo se carga cuando se usa y se suelta solo
 
-| Proceso | RAM aprox. |
-|---|---|
-| Flash Next (cache expertos 9 GB + KV) | ~12–15 GB |
-| pgvector (Docker, límite 256 MB) | ~20 MB medido |
-| Hub + encoder e5-small | ~250 MB |
-| Dashboard (next dev) | ~300 MB |
+**Mac del capitán**
 
-Docker Desktop tiene asignados ~12 GB a su VM: bájalo a **2 GB** en Settings → Resources para que no compita con el modelo.
+| Pieza | Cuándo se carga | Cuándo se libera | RAM |
+|---|---|---|---|
+| Flash Next (`hub/scripts/llm.sh`) | 1ª pregunta al asistente (si ya corre tu `serve.sh`, se reutiliza) | `--sleep-idle-seconds 300`: el server descarga el modelo tras 5 min sin uso y lo recarga al siguiente request | ~12–15 GB activo · casi 0 dormido |
+| Mascota de respaldo en el hub | nunca despierta a Flash Next; solo lo usa si ya está despierto | — | 0 |
+| Encoder e5-small (RAG) | 1ª búsqueda o ingest | `dispose()` tras 5 min sin uso | ~200 MB activo |
+| pgvector (Docker) | `npm run db` | `docker compose stop` | ~20 MB medido (tope 256 MB) |
+| Hub (buffers con tope) | siempre | — | <100 MB |
+| Dashboard | mientras está abierto | — | snapshot reemplaza, gráficas ≤500 puntos |
+
+`llm.sh` arranca Flash Next **sin** `--agent` ni MCP: tu `serve.sh` le da tools de computadora, que aquí no deben estar.
+Docker Desktop tiene ~12 GB asignados a su VM: bájalo a 2 GB (Settings → Resources).
+
+**Celular**
+
+| Pieza | Cuándo | Libera |
+|---|---|---|
+| Qwen3-0.6B (llama.rn, n_ctx 2048) | 1er mensaje a la mascota o al iniciar sesión | `release()` tras 2 min sin uso o al ir a background |
+| Juego | pantalla enfocada | loop parado al salir |
+| Escaneo BLE de proximidad | app en primer plano | se pausa en background (las 3 ESP32 propias siguen conectadas) |
+| Historial | 24 h a 1 muestra/min | ring buffer, AsyncStorage solo guarda agregados |
+
+**Contexto de los agentes de código (skills)**: cada skill visible carga su descripción en cada sesión. Solo hay skills por carpeta, para que carguen solo al trabajar ahí: `mobile/.claude/skills` (apple-design, mobile-native, animate-expo) y `dashboard/.claude/skills` (design-taste-frontend, emil-design-eng). La raíz no tiene ninguna; ponytail y superpowers ya vienen de tus plugins globales.
 
 ## 8. Umbrales
 
