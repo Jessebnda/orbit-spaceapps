@@ -56,6 +56,10 @@ export const ANDROID = {
   'heart.fill': 'heart',
   'shield.fill': 'shield',
   'list.bullet': 'list',
+  'waveform.path.ecg': 'pulse',
+  'lungs.fill': 'leaf',
+  'thermometer.medium': 'thermometer',
+  'gauge.with.dots.needle.67percent': 'speedometer',
 } as const satisfies Record<string, ComponentProps<typeof Ionicons>['name']>;
 
 export type IconName = keyof typeof ANDROID;
