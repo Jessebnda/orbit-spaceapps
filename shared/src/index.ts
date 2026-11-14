@@ -64,8 +64,7 @@ export function worstStatus(m: Metrics): Status {
   return all.includes('critical') ? 'critical' : all.includes('watch') ? 'watch' : 'ok';
 }
 
-/** Color tokens shared by mobile and dashboard (WCAG AA on dark #0B0D12). */
-export const STATUS_COLOR: Record<Status, string> = { ok: '#3DDC97', watch: '#FFB547', critical: '#FF5A5F' };
+export * from './design'; // design tokens + STATUS_COLOR
 
 /* ───────────── BLE spec (for the firmware team) ─────────────
  * Each ESP32 advertises its name as `ORB-<crewId>-<device>` (e.g. ORB-c2-vest) so any phone can
