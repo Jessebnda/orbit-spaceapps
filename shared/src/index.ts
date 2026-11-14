@@ -19,17 +19,17 @@ export const SHIP_METRICS: MetricKey[] = ['kcal', 'water'];
 
 export type Metrics = Partial<Record<MetricKey, number>>;
 
-export const METRIC_META: Record<MetricKey, { label: string; unit: string; info: string }> = {
-  hr: { label: 'Heart rate', unit: 'bpm', info: 'Fluid shifts in microgravity change cardiac load; persistent tachycardia or bradycardia needs review.' },
-  spo2: { label: 'Blood oxygen', unit: '%', info: 'Low SpO2 can signal cabin atmosphere problems (CO2 build-up, O2 leak) or respiratory illness.' },
-  temp: { label: 'Body temp', unit: '°C', info: 'Immune changes in spaceflight raise infection risk; fever is an early sign.' },
-  bpSys: { label: 'Systolic BP', unit: 'mmHg', info: 'Headward fluid shift and deconditioning affect blood pressure and orthostatic tolerance.' },
-  bpDia: { label: 'Diastolic BP', unit: 'mmHg', info: 'Read together with systolic pressure.' },
-  resp: { label: 'Respiration', unit: 'br/min', info: 'Breathing rate rises with stress, exertion, CO2 exposure or illness.' },
-  activity: { label: 'Activity', unit: 'min', info: 'Exercise minutes today. ~2 h/day of countermeasures fights bone and muscle loss.' },
-  sleep: { label: 'Sleep', unit: 'h', info: 'Light cycles, noise and workload cut sleep in orbit; chronic short sleep hurts mood, reaction time and immunity.' },
-  kcal: { label: 'Food', unit: 'kcal', info: 'Crews often under-eat in flight; energy deficit speeds muscle and bone loss.' },
-  water: { label: 'Water', unit: 'L', info: 'Fluid shifts blunt thirst; dehydration raises kidney-stone risk, already higher in microgravity.' },
+export const METRIC_META: Record<MetricKey, { label: string; unit: string; decimals: number; info: string }> = {
+  hr: { label: 'Ritmo cardiaco', unit: 'lpm', decimals: 0, info: 'En microgravedad la sangre sube al pecho y cambia la carga del corazón; taquicardia o bradicardia sostenidas requieren revisión.' },
+  spo2: { label: 'Oxígeno en sangre', unit: '%', decimals: 0, info: 'Un SpO2 bajo puede indicar problemas de la atmósfera de la cabina (CO2 alto, fuga de O2) o enfermedad respiratoria.' },
+  temp: { label: 'Temperatura', unit: '°C', decimals: 1, info: 'El sistema inmune cambia en vuelo y sube el riesgo de infección; la fiebre es una señal temprana.' },
+  bpSys: { label: 'Presión sistólica', unit: 'mmHg', decimals: 0, info: 'El cambio de fluidos y el desacondicionamiento afectan la presión y la tolerancia al ponerse de pie.' },
+  bpDia: { label: 'Presión diastólica', unit: 'mmHg', decimals: 0, info: 'Se lee junto con la sistólica.' },
+  resp: { label: 'Respiración', unit: 'rpm', decimals: 0, info: 'La frecuencia respiratoria sube con estrés, esfuerzo, exposición a CO2 o enfermedad.' },
+  activity: { label: 'Actividad', unit: 'min', decimals: 0, info: 'Minutos de ejercicio hoy. ~2 h diarias de contramedidas frenan la pérdida de hueso y músculo.' },
+  sleep: { label: 'Sueño', unit: 'h', decimals: 1, info: 'Ciclos de luz, ruido y carga de trabajo recortan el sueño en órbita; dormir poco de forma crónica afecta ánimo, reflejos e inmunidad.' },
+  kcal: { label: 'Comida', unit: 'kcal', decimals: 0, info: 'Las tripulaciones suelen comer de menos en vuelo; el déficit acelera la pérdida de músculo y hueso.' },
+  water: { label: 'Agua', unit: 'L', decimals: 1, info: 'El cambio de fluidos reduce la sed; la deshidratación sube el riesgo de cálculos renales, ya mayor en microgravedad.' },
 };
 
 /* ───────────── Thresholds ─────────────
@@ -65,6 +65,8 @@ export function worstStatus(m: Metrics): Status {
 }
 
 export * from './design'; // design tokens + STATUS_COLOR
+export * from './labels';
+export * from './insights';
 
 /* ───────────── BLE spec (for the firmware team) ─────────────
  * Each ESP32 advertises its name as `ORB-<crewId>-<device>` (e.g. ORB-c2-vest) so any phone can
