@@ -68,7 +68,8 @@ export function ShipHud() {
   const slots: (MetricKey | 'sleeve')[] = [...HUD, 'sleeve'].slice(0, 6) as (MetricKey | 'sleeve')[];
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
+    /* only lifts the layout while chatting; otherwise it must never add bottom padding (it pushed SOS off screen) */
+    <KeyboardAvoidingView enabled={talking} behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
     <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: Math.max(insets.top, 8), paddingBottom: Math.max(insets.bottom, 8), paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16), gap: 8 }}>
       <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -119,9 +120,9 @@ export function ShipHud() {
         </View>
         )}
 
-        <View style={{ flex: 0.8, justifyContent: 'space-between', alignItems: 'center' }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
+        <View style={{ flex: 0.8, justifyContent: 'flex-end', alignItems: 'center', gap: 8, minHeight: 0 }} onLayout={(e) => setCol3(e.nativeEvent.layout.width)}>
           <Press label={talking ? 'Cerrar chat con Orbi' : 'Hablar con Orbi'} haptic="light" onPress={() => setTalking((t) => !t)} style={{ alignItems: 'center', gap: 2 }}>
-            <View style={{ height: 64 }}><Creature size={64} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
+            <View style={{ height: 56 }}><Creature size={56} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
             <Text style={font('small', color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
           </Press>
           <SosButton large width={col3} />
