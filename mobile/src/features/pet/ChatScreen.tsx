@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Keyboard, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
+import { FlatList, Keyboard, KeyboardAvoidingView, Text, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
+import { useTabInset } from '../../theme/useTabInset';
 import { warmModel } from '../../services/petBrain';
 import { usePetChat } from './usePetChat';
 import { useStore } from '../../store/store';
@@ -29,7 +29,7 @@ export function ChatScreen() {
   const chat = useStore((s) => s.chat);
   const { metrics, checkins } = useStore();
   const header = useHeaderHeight();
-  const tabHeight = useBottomTabBarHeight();
+  const tabHeight = useTabInset();
   const [keyboard, setKeyboard] = useState(false);
   const [localModel, setLocalModel] = useState<'checking' | 'verified' | 'missing' | 'error'>('checking');
   const checkLocal = async () => {
@@ -51,7 +51,7 @@ export function ChatScreen() {
   const data = chat;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1 }}>
       <View style={{ paddingTop: header + 8, paddingHorizontal: 16, paddingBottom: 8, gap: 4 }}>
         <Text style={font('small', localModel === 'verified' ? color.status.ok : color.muted)}>{localModel === 'checking' ? 'Comprobando modelo en este iPhone…' : localModel === 'verified' ? 'Modelo local probado en este iPhone' : localModel === 'missing' ? 'Modelo local no descargado · chat con alternativa disponible' : 'Modelo local no disponible · chat con alternativa disponible'}</Text>
         <Press label="Probar modelo local" onPress={() => void checkLocal()} disabled={localModel === 'checking' || busy} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={font('small', color.accentText)}>Probar modelo local</Text></Press>

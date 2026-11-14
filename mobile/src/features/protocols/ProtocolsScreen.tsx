@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
+import { useTabInset } from '../../theme/useTabInset';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { PROTOCOL_KIND_LABEL, type Protocol, type ProtocolKind } from '@orbit/shared';
@@ -104,7 +104,7 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2,
 export function ProtocolDetailScreen() {
   const nav = useNavigation<Nav>();
   const { params } = useRoute<{ key: string; name: string; params: { id: string } }>();
-  const tabBar = useBottomTabBarHeight(); // native tab bar overlays this pushed screen
+  const tabBar = useTabInset(); // iOS native tab bar overlays this pushed screen; Android's does not
   const [footer, setFooter] = useState(110);
   const drill = params.id === 'drill';
   const stored = useStore((s) => s.protocols.find((x) => x.id === params.id));
