@@ -83,6 +83,7 @@ export function warmModel(): Promise<{ available: boolean; verified: boolean }> 
 /** Crisis words never reach a model: the reply is fixed and points to a human. */
 const CRISIS = /suicid|matarme|quitarme la vida|autolesi|hacerme daño|no quiero vivir/i;
 const CRISIS_REPLY = 'Lo que dices me preocupa. Contacta ahora mismo con el capitán o con el médico de vuelo; no te quedes con esto solo.';
+const CRISIS_NOTE = 'El usuario está en un momento muy difícil: acompáñalo con calidez, sin juzgar ni sermonear, pregúntale qué está pasando y recuérdale que no está solo.';
 const SYSTEM = PET_SYSTEM;
 const SUMMARY = 'Resume en español, en 2 frases cálidas y concretas, estas observaciones semanales de un tripulante. No diagnosticas.';
 
@@ -205,11 +206,13 @@ function facts(): string {
 
 /** Fallback chain: on-device model, then the hub's pet brain, then canned replies. */
 export async function petReply(text: string): Promise<string> {
-  if (CRISIS.test(text)) return CRISIS_REPLY;
   // last turns so it follows the conversation; the newest 'me' is `text` itself (ChatScreen adds it first)
   // old disclaimer replies are dropped, or the model keeps echoing them
   const history = useStore.getState().chat.slice(-7, -1).filter((m) => !(m.from === 'pet' && /simulaci/i.test(m.text)));
-  const llm = await ask(SYSTEM, text, facts(), history);
+  const crisis = CRISIS.test(text);
+  // crisis: the model still listens and helps; the human-contact line is fixed so it can never be skipped
+  const llm = await ask(crisis ? `${SYSTEM} ${CRISIS_NOTE}` : SYSTEM, text, facts(), history);
+  if (crisis) return llm ? `${llm}\n\n${CRISIS_REPLY}` : CRISIS_REPLY;
   if (llm) return llm;
   const remote = await askPet(text);
   return remote && !hasPhysicalRoleConfusion(remote) ? remote : canned(text);
