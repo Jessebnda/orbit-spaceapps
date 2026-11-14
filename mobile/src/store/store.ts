@@ -59,7 +59,8 @@ type State = {
   markDone: (id: string) => void;
   setChecked: (id: string, idx: number[]) => void;
   addStat: (k: 'petSec' | 'gameSec' | 'cprDrills', n: number) => void;
-  setBest: (score: number) => void;
+  /** End of a round: keeps the best score and banks the coins. */
+  setBest: (score: number, coins?: number) => void;
   addExploration: (e: Exploration) => void;
   addChat: (m: ChatMsg) => void;
   addSession: (s: Session) => void;
@@ -171,7 +172,7 @@ export const useStore = create<State>()(
         const cur = s.days[day] ?? {};
         return { stats: { ...s.stats, [k]: s.stats[k] + n }, days: { ...s.days, [day]: { ...cur, [field]: (cur[field] ?? 0) + n } } };
       }),
-      setBest: (score) => set((s) => ({ stats: { ...s.stats, bestScore: Math.max(s.stats.bestScore, score) } })),
+      setBest: (score, coins = 0) => set((s) => ({ stats: { ...s.stats, bestScore: Math.max(s.stats.bestScore, score), coins: (s.stats.coins ?? 0) + coins } })),
       addExploration: (e) => set((s) => ({ explorations: [e, ...s.explorations] })),
       addChat: (m) => set((s) => ({ chat: [...s.chat, m].slice(-ENV.chatMax) })),
       addSession: (x) => set((s) => ({ sessions: [...s.sessions, x] })),

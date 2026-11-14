@@ -3,19 +3,22 @@ import { AppState, Text, View, useWindowDimensions } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Circle, Polygon, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { sendStat } from '../../services/hub';
 import { useStore } from '../../store/store';
 import { alpha, color, font, radius } from '../../theme';
-import { initGame, tick, type GameState } from '../../domain/game';
+import { initGame, tick, MAX_LIVES, type Drop, type GameState } from '../../domain/game';
 import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { useReducedMotion } from '../../theme/useReducedMotion';
 
 const SHIP_HALF = 0.06;
+const GOLD = '#FFD60A'; // iOS systemYellow (dark)
+const DROP_ICON = { rapid: 'bolt.fill', shield: 'shield.fill', heart: 'heart.fill' } as const;
+const DROP_TINT = { rapid: color.status.watch, shield: color.accent, heart: color.status.critical } as const;
 const FRAME_MS = 33; // el estado de render se refresca a 30 Hz; el movimiento de la nave no pasa por React
 
 /** Capa de estrellas con scroll vertical infinito en el hilo de UI. Sin estado de React. */
@@ -68,6 +71,9 @@ export function GameScreen() {
   const record = useRef(false);
   const playing = running && focused && active;
   const best = useStore((s) => s.stats.bestScore);
+  const bank = useStore((s) => s.stats.coins ?? 0);
+  const flash = useSharedValue(0);
+  const seen = useRef({ hits: 0, coins: 0, lives: 3 });
 
   const pan = Gesture.Pan()
     .onBegin(() => { startX.set(shipX.get()); })
@@ -89,10 +95,16 @@ export function GameScreen() {
       last = t;
       secs += dt;
       game.current = tick(game.current, dt, shipX.get());
+      const now = game.current, prev = seen.current;
+      if (now.hits > prev.hits) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        if (!reduced) flash.set(withSequence(withTiming(0.45, { duration: 60 }), withTiming(0, { duration: 380 })));
+      } else if (now.coins > prev.coins || now.lives > prev.lives) void Haptics.selectionAsync();
+      seen.current = { hits: now.hits, coins: now.coins, lives: now.lives };
       if (game.current.over) {
         const played = secs;
         secs = 0; // el cleanup no debe contar esta ronda dos veces
-        finish(game.current.score, played);
+        finish(game.current.score, game.current.coins, played);
         setRunning(false);
         bump((n) => n + 1);
         return;
@@ -108,16 +120,17 @@ export function GameScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  const finish = (score: number, secs: number) => {
+  const finish = (score: number, coins: number, secs: number) => {
     const st = useStore.getState();
     record.current = score > st.stats.bestScore;
-    st.setBest(score);
+    st.setBest(score, coins);
     st.addStat('gameSec', Math.round(secs));
     sendStat({ type: 'game_time', seconds: Math.round(secs), score });
     void Haptics.notificationAsync(record.current ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning);
   };
   const restart = () => {
     game.current = initGame();
+    seen.current = { hits: 0, coins: 0, lives: 3 };
     setRunning(true);
   };
 
@@ -126,6 +139,7 @@ export function GameScreen() {
   const sy = (y: number) => y * fieldH;
   const shipStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shipX.get() * width - 14 }] }));
   const fresh = g.t === 0 && !g.over;
+  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
   return (
     <View ref={container} onLayout={measureContainer} style={{ flex: 1, backgroundColor: color.bg, paddingBottom: bottomPadding }}>
@@ -148,11 +162,21 @@ export function GameScreen() {
                     <Polygon key={e.id} points={`${x},${y - 14} ${x + 13},${y + 10} ${x - 13},${y + 10}`} {...props} />
                   );
                 })}
+                {g.drops.filter((d) => d.kind === 'coin').map((d) => (
+                  <Circle key={d.id} cx={sx(d.x)} cy={sy(d.y)} r={8} fill={GOLD} stroke={alpha('#000000', 0.25)} strokeWidth={2} />
+                ))}
                 {g.shots.map((b) => <Rect key={b.id} x={sx(b.x) - 1.5} y={sy(b.y) - 5} width={3} height={10} rx={1.5} fill={color.accent} />)}
               </Svg>
+              {g.drops.filter((d): d is Drop & { kind: keyof typeof DROP_ICON } => d.kind !== 'coin').map((d) => (
+                <View key={d.id} pointerEvents="none" style={{ position: 'absolute', left: sx(d.x) - 14, top: sy(d.y) - 14, width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: DROP_TINT[d.kind], backgroundColor: alpha(DROP_TINT[d.kind], 0.18), alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={DROP_ICON[d.kind]} size={14} color={DROP_TINT[d.kind]} />
+                </View>
+              ))}
               <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: sy(0.9) - 16, left: 0 }, shipStyle]}>
-                <Svg width={28} height={32}><Polygon points="14,0 28,26 14,20 0,26" fill={color.accent} /><Polygon points="10,22 18,22 14,31" fill={color.text} /></Svg>
+                {g.shield ? <View style={{ position: 'absolute', left: -8, top: -6, width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: alpha(color.accent, 0.8), backgroundColor: alpha(color.accent, 0.12) }} /> : null}
+                <Svg width={28} height={32}><Polygon points="14,0 28,26 14,20 0,26" fill={g.rapid > 0 ? color.status.watch : color.accent} /><Polygon points="10,22 18,22 14,31" fill={color.text} /></Svg>
               </Animated.View>
+              <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.status.critical }, flashStyle]} />
             </>
           ) : null}
 
@@ -161,8 +185,20 @@ export function GameScreen() {
               <Text style={font('title')}>{g.score}</Text>
               <Text style={font('small', color.muted)}>Récord {best}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 4 }} accessibilityLabel={`${g.lives} vidas`}>
-              {[0, 1, 2].map((i) => <Icon key={i} name="heart.fill" size={16} color={i < g.lives ? color.text : color.faint} />)}
+            <View style={{ alignItems: 'flex-end', gap: 6 }}>
+              <View style={{ flexDirection: 'row', gap: 4 }} accessibilityLabel={`${g.lives} vidas`}>
+                {Array.from({ length: Math.max(3, g.lives) }, (_, i) => <Icon key={i} name="heart.fill" size={16} color={i < g.lives ? color.status.critical : color.raised} />)}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} accessibilityLabel={`${g.coins} monedas`}>
+                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: GOLD }} />
+                <Text style={font('button')}>{g.coins}</Text>
+              </View>
+              {g.shield || g.rapid > 0 ? (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {g.shield ? <Icon name="shield.fill" size={16} color={color.accent} /> : null}
+                  {g.rapid > 0 ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}><Icon name="bolt.fill" size={16} color={color.status.watch} /><Text style={font('small', color.status.watch)}>{Math.ceil(g.rapid)}s</Text></View> : null}
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -172,9 +208,10 @@ export function GameScreen() {
                 <>
                   <Text style={font('display')}>{g.score}</Text>
                   <Text style={font('body', color.muted)}>{record.current ? 'Nuevo récord' : 'Fin de la partida'}</Text>
+                  <Text style={font('body')}>+{g.coins} monedas · {bank} en total</Text>
                 </>
               ) : (
-                <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>{fresh ? 'Arrastra para mover. Dispara sola.' : 'En pausa'}</Text>
+                <Text style={{ ...font('body', color.muted), textAlign: 'center' }}>{fresh ? `Arrastra para mover. Dispara sola.\nRecoge monedas y power-ups: rayo (disparo doble), escudo y corazón (+1 vida, máx. ${MAX_LIVES}).` : 'En pausa'}</Text>
               )}
               <Press label={g.over ? 'Otra partida' : fresh ? 'Empezar' : 'Seguir'} haptic="light" onPress={() => (g.over ? restart() : setRunning(true))} style={{ alignSelf: 'stretch', height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={font('button', color.onAccent)}>{g.over ? 'Otra partida' : fresh ? 'Empezar' : 'Seguir'}</Text>

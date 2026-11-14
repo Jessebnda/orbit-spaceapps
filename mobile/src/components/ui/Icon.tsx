@@ -54,6 +54,7 @@ export const ANDROID = {
   'fork.knife': 'restaurant',
   'drop.fill': 'water',
   'heart.fill': 'heart',
+  'shield.fill': 'shield',
   'list.bullet': 'list',
 } as const satisfies Record<string, ComponentProps<typeof Ionicons>['name']>;
 
