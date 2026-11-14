@@ -97,6 +97,7 @@ export function ProtocolsScreen() {
   );
 }
 
+const NONE: number[] = []; // stable fallback: a fresh [] per render makes zustand v5 loop (Maximum update depth)
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /** Detalle (push nativo): pasos con casilla, anillo de progreso, temporizador, guía y barra de acción fija. */
@@ -107,7 +108,7 @@ export function ProtocolDetailScreen() {
   const drill = params.id === 'drill';
   const stored = useStore((s) => s.protocols.find((x) => x.id === params.id));
   const p = drill ? DRILL : stored;
-  const checked = useStore((s) => s.checked[params.id] ?? []);
+  const checked = useStore((s) => s.checked[params.id] ?? NONE);
   const [secs, setSecs] = useState((p?.durationMin ?? 0) * 60);
   const [timer, setTimer] = useState(false);
   const total = (p?.durationMin ?? 0) * 60;
