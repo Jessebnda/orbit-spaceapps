@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Modal, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useRef, useState } from 'react';
+import { Modal, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { METRIC_META, GOALS, THRESHOLDS, dayProgress, formatMetric, statusOf, worstStatus, type MetricKey } from '@orbit/shared';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../../store/store';
@@ -55,6 +55,13 @@ export function TodayScreen() {
   const { width } = useWindowDimensions();
   const [zone, setZone] = useState<BodyZone | null>(null);
   const [metric, setMetric] = useState<MetricKey | null>(null);
+  // iOS can't present a sheet while another modal is still dismissing (it shows black), so wait for onDismiss
+  const next = useRef<MetricKey | null>(null);
+  const openFromZone = (k: MetricKey) => {
+    if (Platform.OS !== 'ios') { setZone(null); setMetric(k); return; } // onDismiss is iOS-only
+    next.current = k;
+    setZone(null);
+  };
   const day = Math.floor((Date.now() - missionStart) / 86_400_000) + 1;
   const overall = worstStatus(metrics);
   const tile = (width - 32 - space.sm) / 2;
@@ -126,12 +133,12 @@ export function TodayScreen() {
 
       </View>
 
-      <Modal visible={zone !== null} transparent animationType="fade" onRequestClose={() => setZone(null)}>
+      <Modal visible={zone !== null} transparent animationType="fade" onRequestClose={() => setZone(null)} onDismiss={() => { if (next.current) { setMetric(next.current); next.current = null; } }}>
         <Press label="Cerrar" haptic="none" onPress={() => setZone(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}><View /></Press>
         <View style={{ backgroundColor: color.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderCurve: 'continuous', padding: space.lg, gap: space.sm }}>
           <Text style={font('caption', color.muted)}>Zona {zone ? ZONES[zone].label : ''}</Text>
           {zone && ZONES[zone].metrics.map((k, i, all) => (
-            <FeedRow key={k} title={METRIC_META[k].label} badge={metrics[k] != null && statusOf(k, metrics[k]) !== 'ok' ? STATUS_LABEL[statusOf(k, metrics[k])] : undefined} badgeTone={statusOf(k, metrics[k])} trailing={<Text style={font('body')}>{formatMetric(k, metrics[k])}</Text>} last={i === all.length - 1} onPress={() => { setZone(null); setMetric(k); }} />
+            <FeedRow key={k} title={METRIC_META[k].label} badge={metrics[k] != null && statusOf(k, metrics[k]) !== 'ok' ? STATUS_LABEL[statusOf(k, metrics[k])] : undefined} badgeTone={statusOf(k, metrics[k])} trailing={<Text style={font('body')}>{formatMetric(k, metrics[k])}</Text>} last={i === all.length - 1} onPress={() => openFromZone(k)} />
           ))}
         </View>
       </Modal>
