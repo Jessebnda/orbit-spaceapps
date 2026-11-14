@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Orbit",
+    "slug": "orbit",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "scheme": "orbit",
+    "ios": {
+      "bundleIdentifier": "com.orbit.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Orbit lee los sensores ESP32 de tu banda, manga y chaleco.",
+        "NSLocalNetworkUsageDescription": "Orbit se conecta al hub de la nave por la red local.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.orbit.app",
+      "permissions": [
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "bluetoothAlwaysPermission": "Orbit lee los sensores ESP32 de tu banda, manga y chaleco."
+        }
+      ],
+      "llama.rn",
+      "expo-font"
+    ]
+  }
+}
