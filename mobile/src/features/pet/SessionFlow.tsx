@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/store';
 import { alpha, color, font, radius } from '../../theme';
 import { Icon, type IconName } from '../../components/ui/Icon';
@@ -17,7 +17,8 @@ const FEELINGS: { label: string; icon: IconName }[] = [
   { label: 'Motivado', icon: 'bolt.fill' },
 ];
 const PROMPTS = ['¿Qué te preocupa más hoy?', '¿Qué salió bien desde ayer?'];
-const TAB_BAR = 49;
+// iOS native tabs overlay the scene (49 pt + home indicator); Android's Material bar sits below it, ~80 dp tall.
+const TAB_BAR = Platform.select({ ios: 49, default: 80 });
 
 /** Aviso in-app cuando llega la hora de una sesión programada. Se coloca sobre la barra de pestañas según el área segura. */
 export function SessionBanner() {
@@ -32,7 +33,7 @@ export function SessionBanner() {
   const due = sessions.find((x) => !x.done && x.ts <= now);
   if (!due || active) return null;
   return (
-    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={{ position: 'absolute', bottom: insets.bottom + TAB_BAR + 8, left: 16, right: 16, backgroundColor: color.raised, borderRadius: radius.card, borderCurve: 'continuous', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={{ position: 'absolute', bottom: (Platform.OS === 'ios' ? insets.bottom : 0) + TAB_BAR + 8, left: 16, right: 16, backgroundColor: color.raised, borderRadius: radius.card, borderCurve: 'continuous', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <Icon name="figure.mind.and.body" size={24} color={color.accent} />
       <View style={{ flex: 1 }}>
         <Text style={font('button')}>Sesión programada</Text>
@@ -49,7 +50,6 @@ export function SessionBanner() {
 /** Sesión guiada: sentimiento, dos preguntas, respiración de tres ciclos y cierre. Progreso en 4 segmentos. */
 export function SessionFlow() {
   const id = useStore((s) => s.activeSession);
-  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [feeling, setFeeling] = useState('');
   const [notes, setNotes] = useState(['', '']);
@@ -70,11 +70,13 @@ export function SessionFlow() {
   );
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => useStore.getState().setActiveSession(null)}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingHorizontal: 16 }}>
+      {/* a Modal is its own window on Android: only a native SafeAreaView inside it sees that window's bars */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: color.bg }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 16 }}>
         <View style={{ flexDirection: 'row', gap: 4, marginBottom: 24 }} accessibilityLabel={`Paso ${step + 1} de 4`}>
           {[0, 1, 2, 3].map((i) => <View key={i} style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: i <= step ? color.accent : color.raised }} />)}
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, gap: 24 }}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, gap: 24 }}>
           {step === 0 && (
             <>
               <Text style={font('hero')}>¿Cómo te sientes?</Text>
@@ -115,8 +117,12 @@ export function SessionFlow() {
             </View>
           )}
         </ScrollView>
-        <Press label="Salir de la sesión" onPress={() => useStore.getState().setActiveSession(null)} style={{ alignSelf: 'center', padding: 8, marginTop: 8 }}><Text style={font('small', color.muted)}>Salir</Text></Press>
+        {/* own wrapper: a Press with alignSelf directly in this column stretched to the screen bottom on Android and squeezed the content to 0 */}
+        <View style={{ alignItems: 'center', marginTop: 8 }}>
+          <Press label="Salir de la sesión" onPress={() => useStore.getState().setActiveSession(null)} style={{ minHeight: 44, paddingHorizontal: 16, justifyContent: 'center' }}><Text style={font('small', color.muted)}>Salir</Text></Press>
+        </View>
       </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }

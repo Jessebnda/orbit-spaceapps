@@ -92,7 +92,8 @@ export function PetScreen() {
     value: when, mode: 'date', minimumDate: new Date(),
     onChange: (e, day) => {
       if (e.type !== 'set' || !day) return;
-      DateTimePickerAndroid.open({
+      // opening a dialog from inside the previous one's callback is swallowed while that one is still closing
+      setTimeout(() => DateTimePickerAndroid.open({
         value: day, mode: 'time', is24Hour: true,
         onChange: (e2, time) => {
           if (e2.type !== 'set' || !time) return;
@@ -101,7 +102,7 @@ export function PetScreen() {
           setWhen(at);
           schedule(at);
         },
-      });
+      }), 250);
     },
   });
   const upcoming = sessions.filter((s) => !s.done).sort((a, b) => a.ts - b.ts);
