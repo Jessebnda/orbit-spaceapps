@@ -13,7 +13,9 @@ import { Press } from '../../components/ui/Press';
 import { SosButton } from '../../components/ui/SosButton';
 import { StatusMark } from '../../components/ui/StatusMark';
 import { Ring } from '../../components/ui/Ring';
+import { EcgTrace } from '../../components/ui/EcgTrace';
 import { Sparkline } from '../../components/ui/Sparkline';
+import { useEcg } from '../../services/sensors/ecgStream';
 
 const HUD: MetricKey[] = ['hr', 'spo2', 'bpSys', 'resp', 'temp'];
 const ICON: Partial<Record<MetricKey, IconName>> = { hr: 'heart.fill', spo2: 'drop.fill', bpSys: 'gauge.with.dots.needle.67percent', resp: 'lungs.fill', temp: 'thermometer.medium' };
@@ -28,6 +30,7 @@ const LINKS = [
 /** Modo nave (horizontal, en la manga): tres columnas [vitales 2fr][protocolo 1.2fr][acciones 0.8fr], sin scroll, texto blanco sobre negro. */
 export function ShipHud() {
   const { metrics, devices, hubOnline, protocols, done, checked, checkins, history } = useStore();
+  const ecg = useEcg(true);
   const insets = useSafeAreaInsets();
   const [col3, setCol3] = useState(180);
   const [talking, setTalking] = useState(false);
@@ -75,7 +78,7 @@ export function ShipHud() {
           <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), fontSize: 52, lineHeight: 56, flex: 1 }} numberOfLines={1}>
             {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           </Text>
-          <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />
+          {k === 'hr' && ecg ? <EcgTrace values={ecg} width={84} height={40} /> : <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />}
         </View>
       </View>
     );

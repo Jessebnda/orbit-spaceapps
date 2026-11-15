@@ -1,3 +1,4 @@
+import { pushEcg } from './ecgStream';
 import { HeartRate, LineBuffer, parseHeadLine, parseSensorLine, type Device, type Metrics } from '@orbit/shared';
 
 const EMIT_MS = 100; // UI refresh; history is still sampled per minute in the store
@@ -47,6 +48,7 @@ export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => vo
       const sample = parseSensorLine(line);
       if (!sample) continue;
       seen('vest');
+      pushEcg(sample.ecg, sample.leadsOn);
       const bpm = hr.push(sample);
       // Raw surface temperature; statusOf treats < 30 °C as "not on the body" instead of hypothermia.
       // shortcut: no skin→core offset yet, calibrate once the sensor sits on the body.

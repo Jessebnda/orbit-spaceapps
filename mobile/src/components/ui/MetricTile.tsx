@@ -4,6 +4,8 @@ import { color, figureFont, font, radius, STATUS_INK, STATUS_LABEL } from '../..
 import { Icon, type IconName } from './Icon';
 import { Press } from './Press';
 import { RangeDial } from './RangeDial';
+import { useEcg } from '../../services/sensors/ecgStream';
+import { EcgTrace } from './EcgTrace';
 import { Sparkline } from './Sparkline';
 import { StatusMark } from './StatusMark';
 
@@ -15,6 +17,7 @@ export function MetricTile({ metric, value, values, width, onPress }: {
 }) {
   const meta = METRIC_META[metric], st = statusOf(metric, value);
   const abnormal = value != null && st !== 'ok';
+  const ecg = useEcg(metric === 'hr'); // live chest ECG replaces the 24 h trend while it streams
   const ink = abnormal ? STATUS_INK[st] : color.text;
   const [wl, wh] = THRESHOLDS[metric].slice(1, 3) as [number, number];
   const dial = Math.min(96, width - 32);
@@ -30,7 +33,7 @@ export function MetricTile({ metric, value, values, width, onPress }: {
           <Text style={font('small', color.muted)}>{meta.unit}</Text>
         </RangeDial>
       </View>
-      {values.length > 1 ? <Sparkline values={values} width={width - 32} height={24} tint={abnormal ? ink : color.muted} band={[wl, wh]} /> : null}
+      {ecg ? <EcgTrace values={ecg} width={width - 32} height={24} /> : values.length > 1 ? <Sparkline values={values} width={width - 32} height={24} tint={abnormal ? ink : color.muted} band={[wl, wh]} /> : null}
       {value == null ? <Text style={font('small', color.faint)}>Sin señal</Text> : <StatusMark label={STATUS_LABEL[st]} tone={st === 'ok' ? 'ok' : st} />}
     </Press>
   );
