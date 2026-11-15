@@ -4,9 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import type { Action, ChatMsg } from "@/lib/services/hub";
 import { HubError, START_CMD, api } from "@/lib/services/hub";
 
-/** Chat state and the cancelable request to POST /api/assistant. */
+const KEY = "orbit.assistant.chat";
+
+/** Chat state and the cancelable request to POST /api/assistant. Kept in localStorage so it survives page changes and reloads. */
 export function useChat() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const loaded = useRef(false);
+
+  // Read after mount: the server render has no localStorage, reading during render would mismatch hydration.
+  useEffect(() => {
+    const read = () => { try { setMessages(JSON.parse(localStorage.getItem(KEY) ?? "[]") as ChatMsg[]); } catch { /* blocked or corrupt: start empty */ } };
+    read();
+    const onStorage = (e: StorageEvent) => { if (e.key === KEY) read(); }; // another browser tab changed it
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  useEffect(() => {
+    if (!loaded.current) { loaded.current = true; return; } // skip the mount pass, it would overwrite storage with []
+    try { localStorage.setItem(KEY, JSON.stringify(messages)); } catch { /* full or blocked: keep it in memory only */ }
+  }, [messages]);
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string>();
@@ -48,5 +64,11 @@ export function useChat() {
     }
   }
 
-  return { messages, busy, elapsed, error, send, cancel: () => abort.current?.abort() };
+  function reset() {
+    abort.current?.abort();
+    setMessages([]);
+    setError(undefined);
+  }
+
+  return { messages, busy, elapsed, error, send, reset, cancel: () => abort.current?.abort() };
 }

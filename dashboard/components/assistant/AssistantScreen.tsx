@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUp, ArrowUpRight, CheckCheck, CircleCheck, LoaderCircle, Moon, Send, Square, TriangleAlert, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowUp, ArrowUpRight, CheckCheck, CircleCheck, LoaderCircle, Moon, RotateCcw, Send, Square, TriangleAlert, Wrench, type LucideIcon } from "lucide-react";
 import { Markdown } from "@/components/assistant/Markdown";
 import { useChat } from "@/components/assistant/useChat";
 import { Monogram } from "@/components/shell/Nav";
@@ -56,6 +56,7 @@ export function AssistantScreen() {
     <div className="mx-auto flex h-[calc(100dvh-48px)] max-w-[720px] flex-col">
       <header className="flex shrink-0 items-center justify-between gap-3 pb-4">
         <h1 className="t-title">Asistente</h1>
+        <div className="flex items-center gap-4">
         <p className="t-small flex items-center gap-1.5 text-muted" aria-live="polite">
           {status ? (
             <>
@@ -66,6 +67,10 @@ export function AssistantScreen() {
             <span className="text-ink3">{llm.error ? "Hub sin respuesta" : "Consultando estado…"}</span>
           )}
         </p>
+        {chat.messages.length > 0 && (
+          <button type="button" onClick={chat.reset} className="mac-btn !h-7 !px-2.5"><RotateCcw size={12} aria-hidden />Nueva conversación</button>
+        )}
+        </div>
       </header>
 
       <div
