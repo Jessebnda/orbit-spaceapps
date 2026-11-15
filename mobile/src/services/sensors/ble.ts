@@ -26,6 +26,22 @@ let crew = '';
 let onM: (m: Metrics) => void = () => {};
 let scanning = false;
 let peerTimer: ReturnType<typeof setInterval> | null = null;
+let bpTimer: ReturnType<typeof setInterval> | null = null;
+
+// shortcut: MOCK blood pressure for the demo, a random walk inside a healthy resting range (110–120 / 70–80 mmHg).
+// No wearable measures BP yet; replace with pulse-arrival-time (chest ECG + PPG on one ESP32) and a cuff calibration.
+const BP_SYS: [number, number] = [110, 120], BP_DIA: [number, number] = [70, 80];
+function mockBp(onMetrics: (m: Metrics) => void) {
+  let sys = 115, dia = 75;
+  const walk = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, v + (Math.random() - 0.5) * 2));
+  const tick = () => {
+    sys = walk(sys, BP_SYS);
+    dia = walk(dia, BP_DIA);
+    onMetrics({ bpSys: Math.round(sys), bpDia: Math.round(dia) });
+  };
+  tick();
+  return setInterval(tick, 2000);
+}
 let onP: (p: Proximity[]) => void = () => {};
 const connected = new Set<string>();
 const named = new Set<string>();
@@ -39,6 +55,7 @@ export const bleSource: SensorSource = {
     onM = onMetrics;
     onP = onPeers;
     scan();
+    bpTimer = mockBp(onMetrics);
     peerTimer = setInterval(() => {
       const now = Date.now();
       onP([...seen.entries()].filter(([, v]) => now - v.ts < ENV.peerStaleMs).map(([id, v]) => ({ crewId: id, rssi: v.rssi })));
@@ -47,6 +64,8 @@ export const bleSource: SensorSource = {
   stop() {
     if (peerTimer) clearInterval(peerTimer);
     peerTimer = null;
+    if (bpTimer) clearInterval(bpTimer);
+    bpTimer = null;
     if (manager && scanning) manager.stopDeviceScan();
     scanning = false;
     seen.clear();
