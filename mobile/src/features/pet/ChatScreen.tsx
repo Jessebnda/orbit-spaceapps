@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Keyboard, KeyboardAvoidingView, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Keyboard, KeyboardAvoidingView, Text, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useTabInset } from '../../theme/useTabInset';
@@ -42,8 +42,16 @@ export function ChatScreen() {
 
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1 }}>
-      <View style={{ paddingTop: header + 8, paddingHorizontal: 16, paddingBottom: 8 }}>
-        <Text style={font('small', color.muted)}>{brainStatus === 'ready' ? 'Modelo local disponible' : 'Chat con respuesta alternativa'}</Text>
+      <View style={{ paddingTop: header + 8, paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Text style={[font('small', color.muted), { flex: 1 }]}>{brainStatus === 'ready' ? 'Modelo local disponible' : 'Chat con respuesta alternativa'}</Text>
+        {chat.length ? (
+          <Press label="Nueva conversación" hint="Borra este chat y empieza de cero" disabled={busy} onPress={() => Alert.alert('¿Nueva conversación?', 'Se borra este chat. Orbi empieza de cero.', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Empezar de nuevo', style: 'destructive', onPress: () => useStore.getState().clearChat() },
+          ])} style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 22, backgroundColor: color.raised, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
+            <Text style={font('small', color.text)}>Nueva conversación</Text>
+          </Press>
+        ) : null}
       </View>
       <FlatList
         ref={list}

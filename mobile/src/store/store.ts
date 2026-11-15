@@ -63,6 +63,7 @@ type State = {
   setBest: (score: number, coins?: number) => void;
   addExploration: (e: Exploration) => void;
   addChat: (m: ChatMsg) => void;
+  clearChat: () => void;
   addSession: (s: Session) => void;
   finishSession: (id: string) => void;
   snoozeSession: (id: string) => void;
@@ -175,6 +176,7 @@ export const useStore = create<State>()(
       setBest: (score, coins = 0) => set((s) => ({ stats: { ...s.stats, bestScore: Math.max(s.stats.bestScore, score), coins: (s.stats.coins ?? 0) + coins } })),
       addExploration: (e) => set((s) => ({ explorations: [e, ...s.explorations] })),
       addChat: (m) => set((s) => ({ chat: [...s.chat, m].slice(-ENV.chatMax) })),
+      clearChat: () => set({ chat: [] }),
       addSession: (x) => set((s) => ({ sessions: [...s.sessions, x] })),
       finishSession: (id) => set((s) => ({ sessions: s.sessions.map((x) => (x.id === id ? { ...x, done: true } : x)), activeSession: null })),
       snoozeSession: (id) => set((s) => ({ sessions: s.sessions.map((x) => (x.id === id ? { ...x, ts: Date.now() + 10 * 60_000 } : x)), activeSession: null })),
