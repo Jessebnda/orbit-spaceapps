@@ -7,12 +7,14 @@ const HUB = arg('--hub') ?? `ws://127.0.0.1:${HUB_PORT}/ws`;
 const EMERGENCY = arg('--emergency'); // e.g. c2: cardiac arrest 20 s after start
 
 const DAY = 86_400_000;
-const CREW: CrewMember[] = [
+// --skip c1,c2: leave those ids to real phones so the dashboard shows them, not a fake twin.
+const SKIP = new Set((arg('--skip') ?? '').split(',').filter(Boolean));
+const CREW: CrewMember[] = ([
   { id: 'c1', name: 'Ana Ruiz', role: 'Comandante' },
   { id: 'c2', name: 'Leo Park', role: 'Ingeniero de vuelo' },
   { id: 'c3', name: 'Mia Chen', role: 'Oficial médica' },
   { id: 'c4', name: 'Omar Haddad', role: 'Especialista de misión' },
-];
+] as CrewMember[]).filter((m) => !SKIP.has(m.id));
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const drift = (v: number, step: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v + rand(-step, step)));
@@ -50,7 +52,7 @@ function pairRssi(a: string, b: string): number {
   return Math.round(link[k]);
 }
 
-const send = (ws: WebSocket, msg: ClientMsg) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
+const send = (ws: WebSocket | undefined, msg: ClientMsg) => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); };
 
 // The hub keeps crew in memory, so after a hub restart the whole sim (hello, backfill, check-ins) must replay.
 let restarting = false;
@@ -96,12 +98,12 @@ for (const [a, b] of pairs) {
   }
   if (!withC4) backfill.push(record(a, b, now - rand(0.05, 0.9) * DAY, rand(15, 40))); // today so far
 }
-for (const r of backfill) send(sock.c1, { t: 'comms', record: r });
+for (const r of backfill) send(sock[CREW[0].id], { t: 'comms', record: r });
 console.log(`[sim] backfilled ${backfill.length} comms records`);
 
 setInterval(() => {
   const [a, b] = pairs.filter(([x, y]) => x !== 'c4' && y !== 'c4')[Math.floor(Math.random() * 3)];
-  send(sock.c1, { t: 'comms', record: record(a, b, Date.now(), Math.round(rand(1, 3))) });
+  send(sock[CREW[0].id], { t: 'comms', record: record(a, b, Date.now(), Math.round(rand(1, 3))) });
 }, 30_000);
 
 /* ───────────── vitals, proximity, checkins, stats ───────────── */
