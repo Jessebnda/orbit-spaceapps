@@ -102,10 +102,10 @@ export function LeaderboardScreen() {
                   const got = !!sel?.won.includes(a.id);
                   const who = holders(a.id);
                   return (
-                    <li key={a.id} className="flex flex-col items-center text-center" title={a.desc}>
+                    <li key={a.id} lang="es" className="flex min-w-0 flex-col items-center text-center" title={a.desc}>
                       <Medal id={a.id} earned={got} size={56} />
                       <span className="sr-only-x">{got ? "Conseguido" : "Bloqueado"}</span>
-                      <span className="t-small mt-1.5 font-semibold leading-tight">{a.title}</span>
+                      <span className="t-small mt-1.5 w-full font-semibold leading-tight [overflow-wrap:anywhere] hyphens-auto">{a.title}</span>
                       <span className="t-micro text-muted">+{a.xp} XP</span>
                       <span className="mt-1.5 flex h-4 -space-x-1">{who.slice(0, 4).map((w) => <span key={w.c.member.id} className="rounded-full ring-1 ring-bg"><Avatar name={w.c.member.name} size={16} label={false} /></span>)}</span>
                     </li>
