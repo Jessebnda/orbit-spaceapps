@@ -10,7 +10,7 @@ import { Icon, type IconName } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { FeedRow } from '../../components/ui/FeedRow';
 import { petMood, petNeeds, type PetMood } from '../../domain/derive';
-import { Creature } from './Creature';
+import { Creature, PET_COLORS, PET_SHAPES, type PetColor, type PetShape } from './Creature';
 
 const FLUSH_EVERY_S = 15;
 const NEEDS: { key: 'food' | 'rest' | 'mood'; label: string; icon: IconName }[] = [
@@ -23,6 +23,42 @@ const THOUGHT: Record<PetMood, string> = {
   tired: 'Hoy dormiste poco. ¿Respiramos un minuto?',
   sad: 'Aquí estoy. ¿Quieres contarme cómo va el día?',
 };
+/** Shape and colour pickers: each shape previewed as a small Orbi in the current colour. */
+function Customize() {
+  const profile = useStore((s) => s.profile);
+  const shape = (profile.petShape ?? 'bellota') as PetShape;
+  const tint = (profile.petColor ?? 'blanco') as PetColor;
+  const set = useStore.getState().setProfile;
+  return (
+    <View style={{ gap: 16 }}>
+      <Text style={font('section')}>Personaliza a Orbi</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {(Object.keys(PET_SHAPES) as PetShape[]).map((k) => {
+          const on = k === shape;
+          return (
+            <Press key={k} label={`Forma ${PET_SHAPES[k].label}${on ? ', elegida' : ''}`} haptic="light" onPress={() => set({ petShape: k })}
+              style={{ width: 76, alignItems: 'center', gap: 4, paddingVertical: 8, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: on ? color.raised : color.surface, borderWidth: 1.5, borderColor: on ? color.accent : 'transparent' }}>
+              <View style={{ width: 52, height: 52 }}><Creature size={52} shape={k} /></View>
+              <Text style={font('small', on ? color.text : color.muted)}>{PET_SHAPES[k].label}</Text>
+            </Press>
+          );
+        })}
+      </ScrollView>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        {(Object.keys(PET_COLORS) as PetColor[]).map((k) => {
+          const on = k === tint;
+          return (
+            <Press key={k} label={`Color ${PET_COLORS[k].label}${on ? ', elegido' : ''}`} haptic="light" onPress={() => set({ petColor: k })}
+              style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: on ? color.accent : 'transparent' }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: PET_COLORS[k].fill }} />
+            </Press>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /** Quiet portrait of Orbi: the character is the visual, not a decorative scene. */
 function Scene({ mood, onThought }: { mood: PetMood; onThought: () => void }) {
   return <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 20, alignItems: 'center', gap: 12 }}>
@@ -119,6 +155,8 @@ export function PetScreen() {
             <Text style={font('button', color.onAccent)}>Escribir a Orbi</Text>
           </Press>
         </View>
+
+        <Customize />
 
         {/* Needs as labelled meters on the page ground: not three centred icon-number tiles, not another card. */}
         <View style={{ gap: 14 }}>

@@ -6,11 +6,32 @@ import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { color } from '../../theme';
 import { Icon } from '../../components/ui/Icon';
 import { useReducedMotion } from '../../theme/useReducedMotion';
+import { useStore } from '../../store/store';
 import type { PetMood } from '../../domain/derive';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 const VISOR = '#0B0B0D';
 const BULB: Record<PetMood, string> = { happy: color.accent, tired: color.status.watch, sad: color.muted };
+
+// Body outlines in the same 200x200 frame: each keeps the visor (y 86–146), arm sockets (x 40/160) and antenna base (y 72) covered.
+export const PET_SHAPES = {
+  bellota: { label: 'Bellota', d: 'M100 70 C150 70 165 110 160 145 C156 172 132 186 100 186 C68 186 44 172 40 145 C35 110 50 70 100 70 Z' },
+  burbuja: { label: 'Burbuja', d: 'M100 70 C142 70 164 100 164 132 C164 164 138 186 100 186 C62 186 36 164 36 132 C36 100 58 70 100 70 Z' },
+  gota: { label: 'Gota', d: 'M100 62 C120 74 162 104 160 146 C158 172 132 186 100 186 C68 186 42 172 40 146 C38 104 80 74 100 62 Z' },
+  capsula: { label: 'Cápsula', d: 'M66 70 H134 Q160 70 160 96 V160 Q160 186 134 186 H66 Q40 186 40 160 V96 Q40 70 66 70 Z' },
+  gatito: { label: 'Gatito', d: 'M58 86 L56 54 L82 72 C94 70 106 70 118 72 L144 54 L142 86 C156 104 164 124 160 145 C156 172 132 186 100 186 C68 186 44 172 40 145 C36 124 44 104 58 86 Z' },
+} as const;
+// Soft tints of the original white suit, so every option still reads as Orbi on the dark UI.
+export const PET_COLORS = {
+  blanco: { label: 'Blanco', fill: color.text },
+  arena: { label: 'Arena', fill: '#EAD9BC' },
+  menta: { label: 'Menta', fill: '#BDE7D2' },
+  cielo: { label: 'Cielo', fill: '#BCD7F3' },
+  coral: { label: 'Coral', fill: '#F5C1B3' },
+  limon: { label: 'Limón', fill: '#EEE5A6' },
+} as const;
+export type PetShape = keyof typeof PET_SHAPES;
+export type PetColor = keyof typeof PET_COLORS;
 
 function Heart({ i, t }: { i: number; t: { get: () => number } }) {
   const s = useAnimatedStyle(() => ({ opacity: t.get() > 0 ? 1 - t.get() : 0, transform: [{ translateY: -24 * t.get() }, { translateX: (i - 1) * 18 }] }));
@@ -18,7 +39,10 @@ function Heart({ i, t }: { i: number; t: { get: () => number } }) {
 }
 
 /** Orbi: astronauta-bellota hecha de capas SVG. Estado = forma (ojos, párpados, antena, brazos), no solo la boca. Respira y parpadea en el hilo de UI; al tocarla rebota y suelta corazones. */
-export function Creature({ size = 200, mood = 'happy', interactive = false }: { size?: number; mood?: PetMood; interactive?: boolean }) {
+export function Creature({ size = 200, mood = 'happy', interactive = false, shape, tint }: { size?: number; mood?: PetMood; interactive?: boolean; shape?: PetShape; tint?: PetColor }) {
+  const profile = useStore((s) => s.profile);
+  const outline = PET_SHAPES[shape ?? (profile.petShape as PetShape)] ?? PET_SHAPES.bellota;
+  const suit = (PET_COLORS[tint ?? (profile.petColor as PetColor)] ?? PET_COLORS.blanco).fill;
   const reduced = useReducedMotion();
   const breathe = useSharedValue(0);
   const jump = useSharedValue(0);
@@ -71,9 +95,9 @@ export function Creature({ size = 200, mood = 'happy', interactive = false }: { 
     <Animated.View style={[{ width: size, height: size }, body]}>
       <Svg width={size} height={size} viewBox="0 0 200 200">
         <Ellipse cx={100} cy={188} rx={40} ry={5} fill="rgba(0,0,0,0.35)" />
-        <G rotation={-armRot} origin="40, 135"><Ellipse cx={38} cy={140} rx={9} ry={15} fill={color.text} /></G>
-        <G rotation={armRot} origin="160, 135"><Ellipse cx={162} cy={140} rx={9} ry={15} fill={color.text} /></G>
-        <Path d="M100 70 C150 70 165 110 160 145 C156 172 132 186 100 186 C68 186 44 172 40 145 C35 110 50 70 100 70 Z" fill={color.text} />
+        <G rotation={-armRot} origin="40, 135"><Ellipse cx={38} cy={140} rx={9} ry={15} fill={suit} /></G>
+        <G rotation={armRot} origin="160, 135"><Ellipse cx={162} cy={140} rx={9} ry={15} fill={suit} /></G>
+        <Path d={outline.d} fill={suit} />
         <Path d={antenna} stroke={color.accent} strokeWidth={4} strokeLinecap="round" fill="none" />
         <Circle cx={bulb.x} cy={bulb.y} r={6} fill={BULB[mood]} />
         <Ellipse cx={100} cy={116} rx={46} ry={30} fill={VISOR} fillOpacity={0.88} />
