@@ -102,7 +102,9 @@ for (const r of backfill) send(sock[CREW[0].id], { t: 'comms', record: r });
 console.log(`[sim] backfilled ${backfill.length} comms records`);
 
 setInterval(() => {
-  const [a, b] = pairs.filter(([x, y]) => x !== 'c4' && y !== 'c4')[Math.floor(Math.random() * 3)];
+  const live = pairs.filter(([x, y]) => x !== 'c4' && y !== 'c4');
+  if (!live.length) return;
+  const [a, b] = live[Math.floor(Math.random() * live.length)];
   send(sock[CREW[0].id], { t: 'comms', record: record(a, b, Date.now(), Math.round(rand(1, 3))) });
 }, 30_000);
 
