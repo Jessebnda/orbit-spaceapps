@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { dayProgress, nearestResponders, statusOf, type CrewSnapshot, type Emergency, type EmergencyKind, type Protocol, type Proximity } from '@orbit/shared';
+import { dayProgress, hardNewsActive, nearestResponders, statusOf, type CrewSnapshot, type Emergency, type EmergencyKind, type Protocol, type Proximity } from '@orbit/shared';
 import { EMERGENCY_PROTOCOL, PROTOCOLS } from './protocols';
 
 export interface Verdict { emergencies: EmergencyKind[]; protocols: string[] }
@@ -40,7 +40,7 @@ export function evaluate(s: CrewSnapshot, now = Date.now()): Verdict {
   if (m.water != null && m.water < 2 * dayProgress(now)) want.push('hydrate'); // pro-rated: 0.5 L at 09:00 is fine
   if (hour >= 18 && m.kcal != null && m.kcal < 2000) want.push('eat_meal');
   if (ci && (ci.mood <= 2 || ci.stress >= 4)) want.push('box_breathing');
-  if (ci?.bereavement) want.push('grief_support');
+  if (hardNewsActive(s, now)) want.push('grief_support');
   if (s.comms.anomalies.some((a) => a.kind !== 'spike')) want.push('connect_crew');
 
   return { emergencies, protocols: want.filter((id) => !cooling(`${s.member.id}:${id}`, now)) };

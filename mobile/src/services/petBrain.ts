@@ -199,7 +199,7 @@ function facts(): string {
     .map((k) => `${METRIC_META[k].label} ${s.metrics[k]} ${METRIC_META[k].unit}`);
   const last = s.checkins[s.checkins.length - 1];
   const checkin = last
-    ? `ánimo ${last.mood}/5, estrés ${last.stress}/5${last.bereavement ? ', recibió una mala noticia familiar' : ''}`
+    ? `ánimo ${last.mood}/5, estrés ${last.stress}/5`
     : 'sin check-in';
   const protocols = s.protocols.filter((p) => !s.done.includes(p.id)).map((p) => p.title);
   const source = s.dataSource === 'sim' ? 'Datos simulados (demo); no son mediciones de salud reales. ' : '';

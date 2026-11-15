@@ -85,6 +85,13 @@ async function route(method: string, path: string, q: URLSearchParams, body: any
       if (!p) throw new HttpError(400, 'unknown protocol');
       return { delivered: sendProtocol(body.crewId, p) };
     }
+    if (path === '/api/hard_news') {
+      const c = crews.get(body.crewId);
+      if (!c) throw new HttpError(404, 'unknown crew');
+      // shortcut: in memory only, lost on a hub restart; persist like check-ins if that matters.
+      c.snap.hardNews = body.on === true ? Date.now() : undefined;
+      return { hardNews: c.snap.hardNews ?? null };
+    }
     if (path === '/api/resolve') {
       if (!resolveEmergency(body.emergencyId)) throw new HttpError(404, 'unknown emergency');
       return { ok: true };

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
@@ -84,18 +84,17 @@ const Ends = ({ a, b }: { a: string; b: string }) => (
   </View>
 );
 
-/** Check-in diario en hoja (formSheet desde Hoy): ánimo como objeto dominante, estrés, perspectiva, notas y noticias de casa. */
+/** Check-in diario en hoja (formSheet desde Hoy): ánimo como objeto dominante, estrés, perspectiva, notas. */
 export function CheckInScreen() {
   const nav = useNavigation();
   const [mood, setMood] = useState<Score>(3);
   const [stress, setStress] = useState<Score>(2);
   const [outlook, setOutlook] = useState<Score>(3);
   const [injury, setInjury] = useState('');
-  const [bereavement, setBereavement] = useState(false);
   const [note, setNote] = useState('');
 
   const submit = () => {
-    const c: CheckIn = { ts: Date.now(), mood, stress, missionOutlook: outlook, injury: injury.trim() || undefined, bereavement, note: note.trim() || undefined };
+    const c: CheckIn = { ts: Date.now(), mood, stress, missionOutlook: outlook, injury: injury.trim() || undefined, note: note.trim() || undefined };
     useStore.getState().addCheckIn(c);
     send({ t: 'checkin', crewId: useStore.getState().profile.crewId, checkin: c });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -140,19 +139,6 @@ export function CheckInScreen() {
           </View>
         </FormSection>
 
-        <View style={{ gap: 12 }}>
-          <FormSection>
-            <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16 }}>
-              <Text style={{ ...font('body'), flex: 1 }}>Recibí una noticia difícil de casa</Text>
-              <Switch value={bereavement} onValueChange={setBereavement} ios_backgroundColor={color.raised} trackColor={{ true: color.accent, false: color.raised }} />
-            </View>
-          </FormSection>
-          {bereavement ? (
-            <Animated.View entering={FadeIn.duration(150)} style={{ gap: 4, paddingHorizontal: 16 }}>
-              <Text style={font('small', color.muted)}>Gracias por decirlo. Se lo haremos saber a tu cirujano de vuelo, no al equipo.</Text>
-            </Animated.View>
-          ) : null}
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

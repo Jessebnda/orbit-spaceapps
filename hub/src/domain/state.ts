@@ -1,8 +1,7 @@
 import type { WebSocket } from 'ws';
 import {
   ACHIEVEMENTS, commsAnomalies, type CommsRecord, type CrewMember, type CrewSnapshot, type Emergency,
-  type Metrics, type Proximity, type StatEvent,
-} from '@orbit/shared';
+  type Metrics, type Proximity, type StatEvent, hardNewsActive } from '@orbit/shared';
 import type { Env } from './rules';
 
 export const DAY = 86_400_000;
@@ -59,7 +58,12 @@ export function commsOf(id: string, now: number): CrewSnapshot['comms'] {
   return { todayMin: Object.values(byPeer).reduce((a, b) => a + b, 0), byPeer, anomalies: commsAnomalies(id, commsLog, now) };
 }
 
-export const snapshotOf = (id: string, now: number): CrewSnapshot => ({ ...crews.get(id)!.snap, comms: commsOf(id, now) });
+export function snapshotOf(id: string, now: number): CrewSnapshot {
+  const s = crews.get(id)!.snap;
+  // Hard news from home keeps the crew at least on watch, even with normal vitals.
+  const status = hardNewsActive(s, now) && s.status === 'ok' ? 'watch' : s.status;
+  return { ...s, status, comms: commsOf(id, now) };
+}
 export const allSnaps = (now: number) => [...crews.keys()].map((id) => snapshotOf(id, now));
 export const peersBy = () => Object.fromEntries([...crews].map(([id, c]) => [id, c.snap.peers])) as Record<string, Proximity[]>;
 

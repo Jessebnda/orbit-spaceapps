@@ -112,7 +112,6 @@ export interface CheckIn {
   stress: 1 | 2 | 3 | 4 | 5;
   missionOutlook: 1 | 2 | 3 | 4 | 5;   // expectations about the mission
   injury?: string;                      // free text, empty = none
-  bereavement?: boolean;                // family loss reported (delivered news from ground)
   note?: string;
 }
 
@@ -247,6 +246,9 @@ export type HubMsg =
   | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] }    // captain only
   | { t: 'self'; snapshot: CrewSnapshot; crew: CrewMember[] };          // own data + roster so phones show names, not ids                              // to each crew phone, every few seconds
 
+export const HARD_NEWS_MS = 14 * 86_400_000;
+export const hardNewsActive = (s: Pick<CrewSnapshot, 'hardNews'>, now = Date.now()) => s.hardNews != null && now - s.hardNews < HARD_NEWS_MS;
+
 export interface CrewSnapshot {
   member: CrewMember;
   online: boolean;
@@ -254,6 +256,8 @@ export interface CrewSnapshot {
   metrics: Metrics;
   status: Status;
   lastCheckIn?: CheckIn;
+  /** When the captain logged hard news from home (delivered from ground); the crew's state counts it for HARD_NEWS_MS. */
+  hardNews?: number;
   peers: Proximity[];
   comms: { todayMin: number; byPeer: Record<string, number>; anomalies: CommsAnomaly[] };
   stats: { petMin: number; gameMin: number; activityMin: number; xp: number; achievements: string[] };

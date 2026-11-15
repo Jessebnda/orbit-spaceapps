@@ -75,7 +75,7 @@ export function CrewScreen({ id }: { id: string }) {
       <div className="space-y-6">
         <CrewVitals metrics={member.metrics} series24={seriesOf(history.data)} series14={seriesOf(history14.data)} now={now} error={history.error} />
         <CommsPanel crewId={id} records={comms.data?.records ?? []} names={names} now={now} anomalies={member.comms.anomalies} error={comms.error} loading={!comms.data && !comms.error} />
-        <CheckInPanel checkIn={member.lastCheckIn} stats={member.stats} now={now} />
+        <CheckInPanel crewId={id} hardNews={member.hardNews} checkIn={member.lastCheckIn} stats={member.stats} now={now} />
         <BehaviourPanel
           member={member.member}
           snapshot={member}

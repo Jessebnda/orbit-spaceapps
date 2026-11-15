@@ -1,7 +1,9 @@
-import { ACHIEVEMENTS, type CheckIn, type CrewSnapshot } from "@orbit/shared";
+import { useState } from "react";
+import { ACHIEVEMENTS, hardNewsActive, type CheckIn, type CrewSnapshot } from "@orbit/shared";
 import { Bandage, HeartHandshake, StickyNote, ClipboardList } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fmtAgo } from "@/lib/domain/format";
+import { api } from "@/lib/services/hub";
 
 const WORDS: Record<string, string[]> = {
   mood: ["", "Muy bajo", "Bajo", "Regular", "Bien", "Muy bien"],
@@ -32,8 +34,34 @@ function Line({ icon: Icon, label, children }: { icon: typeof Bandage; label: st
   );
 }
 
-/** Last check-in and achievements. Bereavement is a plain line, with no detail. */
-export function CheckInPanel({ checkIn, stats, now }: { checkIn?: CheckIn; stats: CrewSnapshot["stats"]; now: number }) {
+/**
+ * Hard news from home, logged by the captain (the astronaut never reports it). While active (14 days) it keeps the
+ * crew on watch and sends grief support. Only a plain line, with no detail.
+ */
+function HardNews({ crewId, at, now }: { crewId: string; at?: number; now: number }) {
+  const [local, setLocal] = useState<{ at: number | undefined } | null>(null); // until the next snapshot catches up
+  const [busy, setBusy] = useState(false);
+  const cur = local ? local.at : at;
+  const on = hardNewsActive({ hardNews: cur }, now);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ hardNews: number | null }>("/api/hard_news", { method: "POST", body: JSON.stringify({ crewId, on: !on }) });
+      setLocal({ at: r.hardNews ?? undefined });
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex min-h-11 items-center gap-3 py-2">
+      <HeartHandshake size={16} strokeWidth={1.5} className="shrink-0 text-muted" aria-hidden />
+      <span className="t-small w-32 shrink-0 text-muted">Noticia difícil</span>
+      <span className="t-small min-w-0 flex-1">{on && cur ? `Registrada ${fmtAgo(cur, now)} · cuenta en su estado 14 días` : "Ninguna registrada"}</span>
+      <button type="button" onClick={toggle} disabled={busy} className="mac-btn !h-7 shrink-0 !px-2.5">{on ? "Quitar" : "Registrar"}</button>
+    </div>
+  );
+}
+
+/** Last check-in, the captain's hard-news mark, and achievements. */
+export function CheckInPanel({ crewId, hardNews, checkIn, stats, now }: { crewId: string; hardNews?: number; checkIn?: CheckIn; stats: CrewSnapshot["stats"]; now: number }) {
   return (
     <div className="grid gap-x-6 gap-y-8 lg:grid-cols-2">
       <section aria-labelledby="ci-h">
@@ -47,12 +75,12 @@ export function CheckInPanel({ checkIn, stats, now }: { checkIn?: CheckIn; stats
             <Scale label="Estrés" k="stress" v={checkIn.stress} />
             <Scale label="Perspectiva de la misión" k="missionOutlook" v={checkIn.missionOutlook} />
             {checkIn.injury && <Line icon={Bandage} label="Lesión">{checkIn.injury}</Line>}
-            {checkIn.bereavement && <Line icon={HeartHandshake} label="Familia">Pérdida familiar comunicada desde tierra.</Line>}
             {checkIn.note && <Line icon={StickyNote} label="Nota">{checkIn.note}</Line>}
           </div>
         ) : (
           <EmptyState compact icon={ClipboardList} title="Sin registros todavía" hint="Aparecen cuando el tripulante completa su check-in." />
         )}
+        <div className="ledger mt-2" style={{ ["--inset" as string]: "16px" }}><HardNews crewId={crewId} at={hardNews} now={now} /></div>
       </section>
       <section aria-labelledby="lg-h">
         <div className="mb-2 flex items-baseline justify-between">

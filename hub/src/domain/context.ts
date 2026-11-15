@@ -1,8 +1,7 @@
 // Pure text for the LLM and for the hub's own answers. Labels come from @orbit/shared so the copy lives in one place.
 import {
   anomalyText, behaviorInsights, EMERGENCY_LABEL, formatMetric, METRIC_META, PROTOCOL_KIND_LABEL,
-  type CrewSnapshot, type DaySummary, type Emergency, type MetricKey, type Metrics,
-} from '@orbit/shared';
+  type CrewSnapshot, type DaySummary, type Emergency, type MetricKey, type Metrics, hardNewsActive } from '@orbit/shared';
 
 const STATUS_ES = { ok: 'normal', watch: 'vigilar', critical: 'crítico' } as const;
 
@@ -10,7 +9,7 @@ const metricsText = (m: Metrics) =>
   (Object.keys(m) as MetricKey[]).map((k) => `${METRIC_META[k].label} ${formatMetric(k, m[k])}`).join(', ') || 'sin datos';
 
 export function crewLine(s: CrewSnapshot, nameOf: (id: string) => string): string {
-  const ci = s.lastCheckIn ? `check-in: ánimo ${s.lastCheckIn.mood}/5, estrés ${s.lastCheckIn.stress}/5` : 'sin check-in';
+  const ci = (s.lastCheckIn ? `check-in: ánimo ${s.lastCheckIn.mood}/5, estrés ${s.lastCheckIn.stress}/5` : 'sin check-in') + (hardNewsActive(s) ? ', recibió una noticia difícil de casa (registrada por el capitán)' : '');
   const anomalies = s.comms.anomalies.map((a) => anomalyText(a, nameOf)).join(' ');
   return `${s.member.name} (${s.member.role}, ${s.member.id}), ${s.online ? 'en línea' : 'desconectado'}, estado ${STATUS_ES[s.status]}. `
     + `Métricas: ${metricsText(s.metrics)}. ${ci}. Hoy ${Math.round(s.comms.todayMin)} min de conversación. ${anomalies}`.trimEnd();

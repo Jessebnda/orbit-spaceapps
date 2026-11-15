@@ -30,9 +30,10 @@ const low = snap('c3', {}, { lastCheckIn: { ts: NOON, mood: 1, stress: 2, missio
 assert.ok(evaluate(low, NOON).protocols.includes('box_breathing'));
 assert.ok(!evaluate(low, NOON + 60_000).protocols.includes('box_breathing'));
 
-// 4. Bereavement sends grief support and flags the captain.
-const grief = decide(snap('c4', {}, { lastCheckIn: { ts: NOON, mood: 3, stress: 2, missionOutlook: 3, bereavement: true } }), env());
+// 4. Hard news logged by the captain sends grief support and flags the captain; it expires after 14 days.
+const grief = decide(snap('c4', {}, { hardNews: NOON }), env());
 assert.ok(grief.some((d) => d.t === 'protocol' && d.protocol.id === 'grief_support' && d.toCaptains));
+assert.ok(!evaluate(snap('c4', {}, { hardNews: NOON - 15 * 86_400_000 }), NOON + 2 * 3_600_000).protocols.includes('grief_support'));
 
 // 5. Activity watch only after 16:00 local.
 const act = snap('c1', { activity: 10 });
