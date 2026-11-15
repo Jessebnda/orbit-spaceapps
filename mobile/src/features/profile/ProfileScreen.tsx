@@ -41,8 +41,9 @@ export function ProfileScreen() {
             <Text style={font('title')} numberOfLines={1}>{profile.name}</Text>
             <Text style={font('body', color.muted)} numberOfLines={1}>{profile.role} · {profile.crewId}</Text>
           </View>
-          <View accessible accessibilityLabel={`Nivel ${level}, ${xp} XP`}>
+          <View accessible accessibilityLabel={`Nivel ${level}, ${xp} XP`} style={{ alignItems: 'center', gap: 4 }}>
             <Ring size={56} stroke={6} value={(xp % 500) / 500} tint={color.accent}><Text style={figureFont('button')}>{level}</Text></Ring>
+            <Text style={font('small', color.muted)}>Nivel</Text>
           </View>
         </View>
 
@@ -56,12 +57,12 @@ export function ProfileScreen() {
               ].map((r) => (
                 <View key={r.l} style={{ alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${r.l}, ${r.v} minutos esta semana`}>
                   <Ring size={64} stroke={7} value={r.p} tint={color.accent}><Text style={figureFont('button')}>{r.v}</Text></Ring>
-                  <Text style={font('small', color.muted)}>{r.l}</Text>
+                  <Text style={font('small', color.muted)}>{r.l} · {r.u}</Text>
                 </View>
               ))}
             </View>
+            <Text style={font('caption', color.muted)}>Actividad por día · min</Text>
             <Bars values={act} labels={week.map((d) => d.label)} />
-            <Text style={font('small', color.faint)}>Minutos de actividad por día. Los anillos suman los últimos 7 días.</Text>
           </Card>
         </Section>
 
