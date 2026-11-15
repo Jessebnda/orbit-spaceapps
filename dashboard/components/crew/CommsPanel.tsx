@@ -19,7 +19,7 @@ export function CommsPanel({ crewId, records, names, now, anomalies, error, load
           <InView height={320}>{loading ? <div className="skeleton h-full rounded-md" /> : <CommsChart crewId={crewId} records={records} names={names} now={now} />}</InView>
         )}
       </Panel>
-      <section className="lg:col-span-4" aria-labelledby="alerts-h">
+      <section className="lg:col-span-4 lg:pt-5" aria-labelledby="alerts-h">
         <h2 id="alerts-h" className="t-heading mb-3">Alertas</h2>
         {anomalies.length ? (
           <ul className="ledger" style={{ ["--inset" as string]: "16px" }}>

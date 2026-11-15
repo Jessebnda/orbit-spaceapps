@@ -83,8 +83,10 @@ export function ProximityGraph({ crew, emergencies = [] }: { crew: CrewSnapshot[
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <section id="proximidad" className="rounded-md bg-surface p-5 lg:col-span-7">
         <h2 className="t-heading">Proximidad</h2>
-        <p className="t-small mt-0.5 text-muted">Distancias calculadas desde la señal Bluetooth</p>
-        <svg viewBox={`0 0 ${W} ${HH}`} className="mt-3 block w-full" role="img" aria-label="Mapa de proximidad entre la tripulación" aria-describedby={listId}>
+        <p className="t-small mt-0.5 text-muted">Solo las distancias son reales (señal Bluetooth); la orientación es arbitraria y los nodos muy juntos se separan para leerse.</p>
+        {/* Below ~520 px the plane would shrink its 13 px labels to 6 px: it keeps a floor and pans inside its own frame instead. */}
+        <div className="-mx-5 mt-3 overflow-x-auto px-5">
+        <svg viewBox={`0 0 ${W} ${HH}`} className="block w-full min-w-[520px]" role="img" aria-label="Mapa de proximidad entre la tripulación" aria-describedby={listId}>
           <defs>
             <pattern id="grid" width={view.s} height={view.s} patternUnits="userSpaceOnUse" x={W / 2 - view.cx * view.s} y={H / 2 - view.cy * view.s}>
               <circle cx={0} cy={0} r={1} fill="#2C2C2E" />
@@ -139,10 +141,11 @@ export function ProximityGraph({ crew, emergencies = [] }: { crew: CrewSnapshot[
             <text x={2 * view.s + 8} y={4} fontSize={11} fill="#98989F">2 m</text>
           </g>
         </svg>
-        <p className="t-micro text-ink3">Solo las distancias son reales; la orientación es arbitraria y los nodos muy juntos se separan para leerse.</p>
+        </div>
       </section>
 
-      <section className="lg:col-span-5">
+      {/* lg:pt-5 puts this bare heading on the same line as the panel title beside it. */}
+      <section className="lg:col-span-5 lg:pt-5">
         <h2 className="t-heading mb-2">Distancias</h2>
         {sorted.length ? (
           <LedgerList id={listId} label="Distancias entre tripulantes" inset={16}>
