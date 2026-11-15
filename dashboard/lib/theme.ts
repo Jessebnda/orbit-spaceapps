@@ -59,6 +59,7 @@ export const chart = {
   cursor: color.faint,
   line: color.accent,
   /** Peer hues for stacked bars. Status colors are reserved for status, so peers use the accent and neutrals. */
-  peers: [color.accent, color.text, color.muted],
-  other: color.faint,
+  // Three lightness steps that stay apart on the surface; accent and text were two near-identical whites.
+  peers: [color.accent, color.muted, "#5E5E63"],
+  other: "#3A3A3C",
 } as const;

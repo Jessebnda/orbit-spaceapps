@@ -30,7 +30,7 @@ export function CommsChart({ crewId, records, names, now, days = 14 }: { crewId:
       const key = top.includes(peer) ? peer : "__other";
       row[key] = ((row[key] as number) ?? 0) + r.minutes;
     }
-    const hues = [chart.line, color.text, color.muted];
+    const hues = chart.peers;
     const series = [
       ...top.map((id, i) => ({ key: id, label: names[id] ?? id, color: hues[i], total: totals.get(id) ?? 0 })),
       ...(ranked.length > top.length ? [{ key: "__other", label: "Otros", color: chart.other, total: ranked.slice(TOP).reduce((a, id) => a + (totals.get(id) ?? 0), 0) }] : []),
@@ -50,6 +50,11 @@ export function CommsChart({ crewId, records, names, now, days = 14 }: { crewId:
             {p.label} <span className="tabular-nums text-muted">{Math.round(p.total)} min</span>
           </li>
         ))}
+        {/* The mean lives in the legend: drawn on the plot its label sat on the latest bars. */}
+        <li className="t-small flex items-center gap-2 text-muted">
+          <span className="inline-block w-3 border-t border-dashed border-[#8E8E93]" aria-hidden />
+          media <span className="tabular-nums">{Math.round(mean)} min/día</span>
+        </li>
       </ul>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -58,7 +63,7 @@ export function CommsChart({ crewId, records, names, now, days = 14 }: { crewId:
             <XAxis dataKey="day" tick={{ ...tickStyle, fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} />
             <YAxis tick={{ ...tickStyle, fontSize: 11 }} tickLine={false} axisLine={false} width={32} ticks={ticks} domain={[0, ticks[ticks.length - 1]]} />
             <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "#fff", fillOpacity: 0.05 }} formatter={(v, n) => [`${v} min`, n]} />
-            <ReferenceLine y={mean} stroke="#8E8E93" strokeDasharray="3 3" label={{ value: `media ${Math.round(mean)} min`, position: "insideTopRight", fill: "#8E8E93", fontSize: 11 }} />
+            <ReferenceLine y={mean} stroke="#8E8E93" strokeDasharray="3 3" />
             {peers.map((p) => (
               <Bar key={p.key} dataKey={p.key} name={p.label} stackId="m" fill={p.color} stroke={color.surface} strokeWidth={1} isAnimationActive={false} />
             ))}
