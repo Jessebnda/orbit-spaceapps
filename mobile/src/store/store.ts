@@ -12,7 +12,7 @@ export type Session = { id: string; ts: number; done: boolean };
 export type Exploration = { id: string; ts: number; title: string; place: string; km: number; minutes: number };
 export type ChatMsg = { from: 'me' | 'pet'; text: string; ts: number };
 export type Brain = { status: 'none' | 'downloading' | 'ready' | 'error'; progress: number };
-export type Profile = { crewId: string; name: string; role: string; petShape?: string; petColor?: string };
+export type Profile = { crewId: string; name: string; role: string; petShape?: string; petColor?: string; /** Web only: set once the visitor typed a name. */ joined?: boolean };
 
 type State = {
   profile: Profile;

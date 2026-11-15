@@ -11,3 +11,6 @@ dist
 mobile/ios/
 mobile/android/
 *.local
+
+# Expo web export (served from the captain Mac)
+mobile/dist-web/

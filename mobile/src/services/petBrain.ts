@@ -96,6 +96,7 @@ async function modelComplete(path: string): Promise<boolean> {
 }
 
 export async function checkModel() {
+  if (Platform.OS === 'web') return useStore.getState().setBrain({ status: 'none' }); // no file system or llama.rn in a browser: hub or scripted replies
   for (const f of ENV.petLegacyFiles) await FileSystem.deleteAsync(`${FileSystem.documentDirectory}${f}`, { idempotent: true });
   const ok = await modelComplete(MODEL_PATH);
   if (!ok) await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });

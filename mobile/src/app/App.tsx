@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,6 +15,8 @@ import { ShipHud } from '../features/ship';
 import { Toast } from '../components/ui/Toast';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import { MainTabs } from './MainTabs';
+import { WebJoin } from './WebJoin';
+import { useStore } from '../store/store';
 import { linking } from './linking';
 import type { RootParamList } from './navigation';
 
@@ -24,10 +26,14 @@ const Root = createNativeStackNavigator<RootParamList>();
 /** Entrada: arranca el runtime y monta navegación, modo nave y capas globales. La navegación NO se desmonta al girar: el HUD de nave se superpone. */
 export default function App() {
   const { width, height } = useWindowDimensions();
+  // Web: nothing talks to the hub until the visitor has a name and their own crew id (the default id is a real crew's).
+  const ready = useStore((s) => Platform.OS !== 'web' || !!s.profile.joined);
   useEffect(() => {
+    if (!ready) return;
     startRuntime();
     void ScreenOrientation.unlockAsync().catch(() => {});
-  }, []);
+  }, [ready]);
+  if (!ready) return <SafeAreaProvider><WebJoin /></SafeAreaProvider>;
   const ship = width > height;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>

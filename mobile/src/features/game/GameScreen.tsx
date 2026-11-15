@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Text, View, useWindowDimensions } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
+import { useBottomTabBarHeight } from '../../theme/tabBarHeight';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';

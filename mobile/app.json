@@ -38,7 +38,18 @@
       "react-native-bottom-tabs",
       "./plugins/withPodsMinTarget",
       "@react-native-community/datetimepicker",
-      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
-    ]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }
