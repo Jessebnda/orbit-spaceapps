@@ -66,18 +66,19 @@ export function ExplorationsScreen() {
                     {own && <Chip>Salida más larga</Chip>}
                   </header>
                   <h2 className="t-title">{e.event.title}</h2>
-                  <div>
+                  {/* The honesty note sits in the frame, opposite the scale, in HTML so it stays 11 px when the map scales down. */}
+                  <div className="relative">
                     <RouteMap seed={`${e.event.title}|${e.crewId}`} km={e.event.km} />
-                    <p className="t-micro mt-1.5 text-ink3">Plano simulado</p>
+                    <span className="t-micro absolute right-3 bottom-2 text-ink3">Plano simulado</span>
                   </div>
-                  <dl className="grid grid-cols-3 gap-6">
+                  <dl className="grid grid-cols-3 gap-3 sm:gap-6">
                     {[
                       { l: "Distancia", v: e.event.km.toFixed(1), u: "km" },
                       { l: "Tiempo", v: hm(e.event.minutes), u: "" },
                       { l: "Ritmo", v: fmtPace(e.event.minutes, e.event.km).replace(" /km", ""), u: "/km" },
                     ].map((s) => (
                       <div key={s.l}>
-                        <dd className="t-figure">{s.v}{s.u && <span className="t-small ml-1 font-normal text-muted">{s.u}</span>}</dd>
+                        <dd className="t-figure whitespace-nowrap max-sm:text-[22px] max-sm:leading-7">{s.v}{s.u && <span className="t-small ml-1 font-normal text-muted">{s.u}</span>}</dd>
                         <dt className="t-small text-muted">{s.l}</dt>
                       </div>
                     ))}
