@@ -26,7 +26,7 @@ function pulseArrived(p: number, onM: (m: Metrics) => void) {
   lastR = undefined; // first wrist pulse after each R peak only: later ones are the dicrotic notch or noise
   ptts = [...ptts.slice(-8), ptt];
   const med = [...ptts].sort((a, b) => a - b)[ptts.length >> 1];
-  if (ptts.length < 5) return;
+  if (ptts.length < 9) return; // the first beats after putting the sensors on still carry false wrist peaks
   const bp = bpFromPtt(med);
   bpAt = Date.now();
   onM({ bpSys: bp.sys, bpDia: bp.dia });
