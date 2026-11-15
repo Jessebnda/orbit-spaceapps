@@ -185,6 +185,9 @@ export const useStore = create<State>()(
     }),
     {
       name: 'orbit_v1',
+      // Bump to push a new build-time hub URL over the one saved on the phone; later edits in Ajustes stick.
+      version: 2,
+      migrate: (s) => ({ ...(s as Persisted), hubUrl: ENV.hubUrl }),
       storage: createJSONStorage(() => debouncedStorage),
       partialize: (s): Persisted => ({
         profile: s.profile, missionStart: s.missionStart, hubUrl: s.hubUrl, dataSource: s.dataSource, history: s.history, days: s.days,
