@@ -11,7 +11,9 @@ import { MetricTile } from '../../components/ui/MetricTile';
 import { Press } from '../../components/ui/Press';
 import { SettingsRow } from '../../components/ui/SettingsGroup';
 import { MetricTrend } from '../../components/ui/MetricTrend';
+import { EcgTrace } from '../../components/ui/EcgTrace';
 import { RangeDial } from '../../components/ui/RangeDial';
+import { useEcg } from '../../services/sensors/ecgStream';
 import { Ring } from '../../components/ui/Ring';
 import { Card, Section } from '../../components/ui/FormSection';
 import { dayKey } from '../../domain/derive';
@@ -60,6 +62,7 @@ export function TodayScreen() {
   const day = Math.floor((Date.now() - missionStart) / 86_400_000) + 1;
   const overall = worstStatus(metrics);
   const tile = (width - 32 - space.sm) / 2;
+  const ecg = useEcg(metric === 'hr'); // live chest ECG in the heart-rate detail
   const trend = (k: MetricKey) => history.map((h) => h.m[k]).filter((v): v is number => v != null);
 
   return (
@@ -148,6 +151,10 @@ export function TodayScreen() {
           <>
             <Text style={font('caption', color.muted)}>{METRIC_META[metric].label}</Text>
             <Text style={font('display')}>{formatMetric(metric, metrics[metric])}</Text>
+            {metric === 'hr' && ecg ? <>
+              <EcgTrace values={ecg} width={width - 32} height={140} />
+              <Text style={font('small', color.muted)}>Electrocardiograma en vivo · últimos 4 s</Text>
+            </> : null}
             {!GOALS[metric] && <View style={{ alignItems: 'center' }}><RangeDial metric={metric} value={metrics[metric]} size={180} /></View>}
             <StatusMark label={STATUS_LABEL[statusOf(metric, metrics[metric])]} tone={statusOf(metric, metrics[metric]) === 'ok' ? 'muted' : statusOf(metric, metrics[metric])} />
             <MetricTrend metric={metric} history={history} width={width - 32} />
