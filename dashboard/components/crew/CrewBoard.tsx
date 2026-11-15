@@ -61,7 +61,7 @@ function CrewCard({ c, now, victim }: { c: CrewSnapshot; now: number; victim: bo
   const off = !c.online;
   const sleeps = nights.filter((n): n is number => n != null);
   return (
-    <article className={`rounded-md bg-surface p-5 ${off ? "opacity-90" : ""}`} aria-label={c.member.name}>
+    <article className={`@container rounded-md bg-surface p-5 ${off ? "opacity-90" : ""}`} aria-label={c.member.name}>
       <div className="flex h-10 items-center gap-3">
         <Link href={`/crew/${c.member.id}`} className="flex min-w-0 flex-1 items-center gap-3">
           <Avatar name={c.member.name} size={40} status={c.status} online={c.online} emergency={victim} />
@@ -73,12 +73,13 @@ function CrewCard({ c, now, victim }: { c: CrewSnapshot; now: number; victim: bo
         {victim ? <StatusMark variant="pill" status="critical" label="En emergencia" /> : <StatusMark variant="pill" status={c.status} />}
       </div>
 
-      <div className="mt-5 grid grid-cols-5 gap-3">
+      {/* Five across only when the card has room; narrower cards (phone, 4-up wall) wrap to 3 + 2 with pressure spanning two. */}
+      <div className="mt-5 grid grid-cols-3 gap-x-3 gap-y-4 @md:grid-cols-5 @md:gap-y-3">
         {STRIP.map((s) => {
           const v = off ? undefined : c.metrics[s.k];
           const st = statusOf(s.k, v, now);
           return (
-            <button key={s.id} type="button" aria-pressed={sel === s.id} onClick={() => setSel(s.id)} className={`-m-1 rounded-sm p-1 text-left ${sel === s.id ? "bg-white/[0.06]" : "row-hover"}`}>
+            <button key={s.id} type="button" aria-pressed={sel === s.id} onClick={() => setSel(s.id)} className={`-m-1 rounded-sm p-1 text-left ${s.id === "bp" ? "@max-md:col-span-2" : ""} ${sel === s.id ? "bg-white/[0.06]" : "row-hover"}`}>
               <span className="t-micro block text-muted">{s.label}</span>
               <span className="mt-0.5 flex items-baseline gap-1" style={{ color: st === "ok" ? undefined : statusColor[st] }}>
                 <span className={`${s.id === "bp" ? "text-[22px] leading-8" : "t-figure"} font-semibold tabular-nums`}>{s.id === "bp" ? `${num("bpSys", v)}/${num("bpDia", off ? undefined : c.metrics.bpDia)}` : num(s.k, v)}</span>
@@ -104,7 +105,8 @@ function CrewCard({ c, now, victim }: { c: CrewSnapshot; now: number; victim: bo
             <div key={k} className="flex items-center gap-2.5">
               <PaceRing metric={k} value={v} now={now} label={`${METRIC_META[k].label} ${num(k, v)} de ${GOALS[k]} ${METRIC_META[k].unit}`} />
               <span className="min-w-0">
-                <span className="t-micro block truncate text-muted">{METRIC_META[k].label} · {METRIC_META[k].unit}</span>
+                {/* Narrow cards drop the unit from the label so the word is never cut; the meter's aria-label keeps it. */}
+                <span className="t-micro block truncate text-muted">{METRIC_META[k].label}<span className="@max-md:hidden"> · {METRIC_META[k].unit}</span></span>
                 <span className="t-small block whitespace-nowrap tabular-nums">{num(k, v)}<span className="text-ink3">/{GOALS[k]}</span></span>
               </span>
             </div>
