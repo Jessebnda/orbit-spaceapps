@@ -1,4 +1,5 @@
 import { BLE, HeartRate, LineBuffer, parseBleName, parseSensorLine, type Device, type Metrics, type Proximity } from '@orbit/shared';
+import { PermissionsAndroid, Platform } from 'react-native';
 import type { BleManager as BleMgr, Device as BleDevice } from 'react-native-ble-plx';
 import { ENV } from '../../config/env';
 import { useStore } from '../../store/store';
@@ -57,11 +58,31 @@ export const bleSource: SensorSource = {
   },
 };
 
-function scan() {
+// Android 12+ grants nothing from the manifest alone: without this the scan errors out silently.
+async function androidPermissions() {
+  if (Platform.OS !== 'android') return true;
+  const P = PermissionsAndroid.PERMISSIONS;
+  const want = Number(Platform.Version) >= 31 ? [P.BLUETOOTH_SCAN, P.BLUETOOTH_CONNECT] : [P.ACCESS_FINE_LOCATION];
+  const got = await PermissionsAndroid.requestMultiple(want);
+  return want.every((p) => got[p] === PermissionsAndroid.RESULTS.GRANTED);
+}
+
+async function scan() {
   if (!manager || scanning) return;
   scanning = true;
+  if (!(await androidPermissions())) {
+    scanning = false;
+    console.warn('[ble] permisos de Bluetooth denegados');
+    return;
+  }
+  if (!scanning) return; // stopped while the dialog was open
   manager.startDeviceScan(null, { allowDuplicates: true }, (err, d) => {
-    if (err || !d) return;
+    if (err) {
+      scanning = false;
+      console.warn('[ble] scan error', err.errorCode, err.message);
+      return;
+    }
+    if (!d) return;
     const p = parseBleName(d.name);
     if (!p) return;
     if (p.crewId === crew) {
@@ -81,10 +102,12 @@ function connect(d: BleDevice, device: Device) {
     connected.delete(d.id);
     useStore.getState().setDevice(device, false);
   };
-  d.connect()
+  // Android starts at a 23-byte MTU (20-byte notifies), which cuts every ~60-byte CSV line; iOS negotiates on its own.
+  d.connect(Platform.OS === 'android' ? { requestMTU: 247 } : undefined)
     .then((x) => x.discoverAllServicesAndCharacteristics())
     .then((x) => {
       useStore.getState().setDevice(device, true);
+      console.log('[ble] connected', device, d.name);
       // Two wire formats: JSON metrics every 2 s (reference firmware) or the raw CSV stream (ECG 50 Hz + IMU/temp 10 Hz).
       const lines = new LineBuffer();
       const hr = new HeartRate();
@@ -105,7 +128,9 @@ function connect(d: BleDevice, device: Device) {
           const sample = parseSensorLine(line);
           if (!sample) continue;
           const bpm = hr.push(sample);
-          if (sample.temp != null) temp = sample.temp;
+          // The GY-906 reads whatever it points at; below 30 °C it is reading air, not skin, and would raise a false hypothermia alarm.
+          // shortcut: fixed cut-off, replace with a skin→core offset once the sensor sits on the body.
+          if (sample.temp != null) temp = sample.temp >= 30 ? sample.temp : undefined;
           if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
           if (sample.t - lastEmit < 2000) continue;
           lastEmit = sample.t;
@@ -117,5 +142,8 @@ function connect(d: BleDevice, device: Device) {
       });
       x.onDisconnected(drop);
     })
-    .catch(drop);
+    .catch((e) => {
+      console.warn('[ble] connect', device, e?.message);
+      drop();
+    });
 }
