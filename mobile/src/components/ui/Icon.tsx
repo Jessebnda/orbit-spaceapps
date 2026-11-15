@@ -56,6 +56,7 @@ export const ANDROID = {
   'heart.fill': 'heart',
   'shield.fill': 'shield',
   'list.bullet': 'list',
+  'trash': 'trash-outline',
   'waveform.path.ecg': 'pulse',
   'lungs.fill': 'leaf',
   'thermometer.medium': 'thermometer',

@@ -48,7 +48,7 @@ function Card1({ e, max }: { e: Exploration; max: number }) {
             <Text style={font('small', color.muted)} numberOfLines={1}>{[e.place, ago(e.ts)].filter(Boolean).join(' · ')}</Text>
           </View>
           <Press label="Eliminar exploración" onPress={remove} style={{ width: 44, height: 44, marginRight: -12, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="list.bullet" size={18} color={color.faint} />
+            <Icon name="trash" size={17} color={color.faint} />
           </Press>
         </View>
         <View style={{ flexDirection: 'row' }}>
