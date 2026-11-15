@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useTabInset } from '../../theme/useTabInset';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { PROTOCOL_KIND_LABEL, type Protocol, type ProtocolKind } from '@orbit/shared';
 import { send, sendStat } from '../../services/hub';
@@ -112,6 +112,9 @@ export function ProtocolDetailScreen() {
   const checked = useStore((s) => s.checked[params.id] ?? NONE);
   const [secs, setSecs] = useState((p?.durationMin ?? 0) * 60);
   const [timer, setTimer] = useState(false);
+  // Tabs keep their screens mounted: leaving must stop the countdown and unmount the guides, or they keep vibrating in the background.
+  const focused = useIsFocused();
+  useEffect(() => { if (!focused) setTimer(false); }, [focused]);
   const total = (p?.durationMin ?? 0) * 60;
   useEffect(() => {
     if (!timer) return;
@@ -184,9 +187,9 @@ export function ProtocolDetailScreen() {
           </Card>
         ) : null}
 
-        {p.guide === 'breathing' ? <Card><Breathing /></Card> : null}
-        {p.guide === 'jumping_jacks' ? <Card><JumpingJacks /></Card> : null}
-        {p.guide === 'cpr' || drill ? <Card><CprGuide /></Card> : null}
+        {focused && p.guide === 'breathing' ? <Card><Breathing /></Card> : null}
+        {focused && p.guide === 'jumping_jacks' ? <Card><JumpingJacks /></Card> : null}
+        {focused && (p.guide === 'cpr' || drill) ? <Card><CprGuide /></Card> : null}
       </ScrollView>
 
       <View onLayout={(e) => setFooter(e.nativeEvent.layout.height)} style={{ position: 'absolute', left: 0, right: 0, bottom: tabBar, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: color.bg, gap: 6 }}>
