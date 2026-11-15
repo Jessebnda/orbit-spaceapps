@@ -14,7 +14,7 @@ import { type LlmState } from "@/lib/services/hub";
 const LLM: Record<LlmState["state"], { text: string; Icon: LucideIcon; spin: boolean; tone: string }> = {
   off: { text: "Dormido · se carga al preguntar", Icon: Moon, spin: false, tone: "" },
   starting: { text: "Cargando modelo…", Icon: LoaderCircle, spin: true, tone: "" },
-  ready: { text: "Listo", Icon: CircleCheck, spin: false, tone: "text-[#30D158]" },
+  ready: { text: "Listo", Icon: CircleCheck, spin: false, tone: "text-ink" },
 };
 const GLYPH = { send: Send, check: CheckCheck, wrench: Wrench };
 
@@ -52,8 +52,9 @@ export function AssistantScreen() {
     "Resume el sueño de la tripulación",
   ];
 
+  // Below md the 81 px top nav sits above main too, so the composer would start under the fold.
   return (
-    <div className="mx-auto flex h-[calc(100dvh-48px)] max-w-[720px] flex-col">
+    <div className="mx-auto flex h-[calc(100dvh-48px-81px)] max-w-[720px] flex-col md:h-[calc(100dvh-48px)]">
       <header className="flex shrink-0 items-center justify-between gap-3 pb-4">
         <h1 className="t-title">Asistente</h1>
         <div className="flex items-center gap-4">
@@ -111,7 +112,7 @@ export function AssistantScreen() {
                           <G size={14} strokeWidth={1.5} className="shrink-0 text-muted" aria-hidden />
                           <span className="min-w-0 flex-1 truncate">{l.text}</span>
                           <span className="flex shrink-0 items-center gap-1 text-muted">
-                            {l.failed ? <><TriangleAlert size={14} className="text-[#FF9F0A]" aria-hidden />falló</> : <><CircleCheck size={14} className="text-[#30D158]" aria-hidden />{l.glyph === "send" ? "enviado" : "hecho"}</>}
+                            {l.failed ? <><TriangleAlert size={14} className="text-[#FF9F0A]" aria-hidden />falló</> : <><CircleCheck size={14} className="text-ink" aria-hidden />{l.glyph === "send" ? "enviado" : "hecho"}</>}
                           </span>
                         </li>
                       );
@@ -152,7 +153,7 @@ export function AssistantScreen() {
             className="field !h-auto min-h-[52px] resize-none !rounded-xl py-3 pr-14 disabled:opacity-50"
           />
           <span id="chat-hint" className="sr-only">Enter envía, Mayús más Enter añade una línea</span>
-          <button type="submit" aria-label="Enviar" disabled={chat.busy || !input.trim()} className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40">
+          <button type="submit" aria-label="Enviar" disabled={chat.busy || !input.trim()} className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-accent text-[color:var(--t-on-accent)] disabled:bg-raised disabled:text-muted">
             <ArrowUp size={16} strokeWidth={2} aria-hidden />
           </button>
         </form>

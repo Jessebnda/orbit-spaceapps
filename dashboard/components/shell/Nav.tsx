@@ -98,7 +98,7 @@ export function Nav() {
       </div>
       <div className="mt-auto hidden px-2 md:block max-xl:md:text-center" title={connected ? "Hub conectado" : "Sin hub"}>
         <p className="flex items-center gap-1.5 t-small max-xl:md:justify-center">
-          {connected ? <CircleCheck size={14} strokeWidth={2} fill="currentColor" stroke="#1c1c1e" className="text-[#30D158]" aria-hidden /> : <WifiOff size={14} strokeWidth={1.5} className="text-[#FF9F0A]" aria-hidden />}
+          {connected ? <CircleCheck size={14} strokeWidth={2} fill="currentColor" stroke="#1c1c1e" className="text-ink" aria-hidden /> : <WifiOff size={14} strokeWidth={1.5} className="text-[#FF9F0A]" aria-hidden />}
           <span className="max-xl:md:sr-only">{connected ? "Hub conectado" : "Sin hub"}</span>
         </p>
         <p className="t-micro mt-0.5 text-ink3 xl:block max-xl:hidden">{lastAt && now ? `último dato ${fmtAgo(lastAt, now)}` : "sin datos aún"}</p>
