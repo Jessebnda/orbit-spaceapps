@@ -26,6 +26,7 @@ let scanning = false;
 let peerTimer: ReturnType<typeof setInterval> | null = null;
 let onP: (p: Proximity[]) => void = () => {};
 const connected = new Set<string>();
+const named = new Set<string>();
 const seen = new Map<string, { rssi: number; ts: number }>();
 
 export const bleSource: SensorSource = {
@@ -83,7 +84,12 @@ async function scan() {
       return;
     }
     if (!d) return;
-    const p = parseBleName(d.name);
+    // One line per new advertiser, so a wearable with the wrong name or crew id shows up in the logs.
+    if (!named.has(d.id) && (d.name || d.localName)) {
+      named.add(d.id);
+      console.log('[ble] visto', d.name ?? d.localName, d.rssi, 'crew', crew);
+    }
+    const p = parseBleName(d.name ?? d.localName);
     if (!p) return;
     if (p.crewId === crew) {
       if (!connected.has(d.id)) connect(d, p.device);
