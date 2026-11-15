@@ -1,5 +1,5 @@
 // Run: npm run check (from shared/). Asserts for the wearable CSV parser and the heart-rate estimator.
-import { HeartRate, LineBuffer, PeakDetector, parseHeadLine, parsePulseLine, parseSensorLine, type SensorSample } from './ecg';
+import { HeartRate, LineBuffer, PeakDetector, PulseWave, parseHeadLine, parsePulseLine, parseSensorLine, type SensorSample } from './ecg';
 
 function check(v: boolean, m: string) { if (!v) throw new Error(m); }
 
@@ -65,4 +65,11 @@ for (const s of trace(60, 5, true, 4)) if (pd.push(s.t, s.ecg)) peak = pd.last;
 check(peak != null && peak % 1000 === 36, `R peak at its top sample (${peak})`);
 check(parsePulseLine('P,522301128,1078')?.tUs === 522301128 && parsePulseLine('P,522301128,1078')?.ir === 1078, 'P line parses');
 check(parsePulseLine('P,,1078') === null && parsePulseLine('S,1,22') === null && parsePulseLine('29087312,1968,nan') === null, 'bad P lines are dropped');
+// Wrist PPG at 75 bpm: a 400-count beat dip on a baseline that wanders by 5000 counts. Every beat must be found.
+const pw = new PulseWave(); const gaps: number[] = []; let prevP: number | undefined;
+for (let t = 0; t < 20000; t += 10) {
+  const ph = (t % 800) / 800, beat = ph < 0.15 ? 400 * Math.sin((ph / 0.15) * Math.PI / 2) : 400 * (1 - (ph - 0.15) / 0.85);
+  if (pw.push(t, 90000 + 5000 * Math.sin(t / 3000) - beat + (Math.random() - 0.5) * 20) && t > 3000) { if (prevP != null) gaps.push(pw.last! - prevP); prevP = pw.last; }
+}
+check(gaps.length >= 19 && gaps.every((g) => Math.abs(g - 800) < 60), `PPG beats every 800 ms despite drift: ${gaps.join(',')}`);
 console.log('ecg.check: ok');

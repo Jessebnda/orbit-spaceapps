@@ -1,5 +1,5 @@
 import { pushEcg } from './ecgStream';
-import { HeartRate, LineBuffer, PeakDetector, parseHeadLine, parsePulseLine, parseSensorLine, type Device, type Metrics } from '@orbit/shared';
+import { HeartRate, LineBuffer, PulseWave, parseHeadLine, parsePulseLine, parseSensorLine, type Device, type Metrics } from '@orbit/shared';
 
 const EMIT_MS = 100; // UI refresh; history is still sampled per minute in the store
 const ECG_WINS_MS = 3000; // with both wearables on, the chest ECG pulse beats the head-band PPG pulse
@@ -8,17 +8,22 @@ const TRACE_MS = 20; // the live trace stays at 50 Hz even when the chest sends 
 const PTT_MIN = 80, PTT_MAX = 500; // ms; outside this the R peak and the wrist pulse are not the same beat
 
 let ecgHrAt = 0; // shared by every link: when the ECG last produced a pulse
-let lastR: number | undefined; // newest chest R peak, phone ms (performance.now)
+let lastR: number | undefined; // newest unpaired chest R peak, phone ms (performance.now)
+let ptts: number[] = []; // last accepted beats, for a median that ignores the odd false wrist peak
 
 /**
  * Pulse transit time: chest R peak → wrist pulse peak, both moved to phone time with each link's clock offset.
  * Logged only for now; blood pressure stays simulated until it is calibrated against a cuff.
- * shortcut: uses the PPG peak, not its foot, and ±5 ms of sync error; upgrade both before trusting it for BP.
+ * Wrist beat = steepest IR upstroke (PulseWave). shortcut: ±5 ms of clock-sync error; tighten the sync before trusting it for BP.
  */
 function pulseArrived(p: number) {
   if (lastR == null) return;
   const ptt = p - lastR;
-  if (ptt >= PTT_MIN && ptt <= PTT_MAX) console.log('[ptt]', ptt.toFixed(1), 'ms');
+  if (ptt < PTT_MIN || ptt > PTT_MAX) return;
+  lastR = undefined; // first wrist pulse after each R peak only: later ones are the dicrotic notch or noise
+  ptts = [...ptts.slice(-8), ptt];
+  const med = [...ptts].sort((a, b) => a - b)[ptts.length >> 1];
+  console.log('[ptt]', ptt.toFixed(0), 'ms, mediana', med.toFixed(0), 'ms de', ptts.length, 'latidos');
 }
 
 /**
@@ -32,7 +37,7 @@ function pulseArrived(p: number) {
 export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => void = () => {}, toPhone?: () => ((espMs: number) => number) | null) {
   const lines = new LineBuffer();
   const hr = new HeartRate();
-  const ppg = new PeakDetector();
+  const ppg = new PulseWave();
   let lastEmit = 0;
   let lastTrace = 0;
   let pulses = { n: 0, since: Date.now(), dts: [] as number[], prev: 0 }; // P-line timing check, logged every 5 s
@@ -63,9 +68,8 @@ export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => vo
           console.log('[ppg] tasa', (pulses.n / ((Date.now() - pulses.since) / 1000)).toFixed(0), '/s dt_us min/med/max', d[0], d[d.length >> 1], d[d.length - 1], 'ir', pulse.ir);
           pulses = { n: 0, since: Date.now(), dts: [], prev: pulses.prev };
         }
-        // MAX3010x IR drops when blood arrives, so the pulse peak is the IR minimum.
         const map = toPhone?.();
-        if (ppg.push(t, -pulse.ir) && map) pulseArrived(map(ppg.last!));
+        if (ppg.push(t, pulse.ir) && map) pulseArrived(map(ppg.last!));
         continue;
       }
       const head = parseHeadLine(line);

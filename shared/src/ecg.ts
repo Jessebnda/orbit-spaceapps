@@ -142,6 +142,25 @@ export class HeartRate {
   reset() { this.det.reset(); this.peaks = []; }
 }
 
+/**
+ * Wrist pulse beats from raw IR, timed at the steepest upstroke (the usual pulse-transit-time marker).
+ * IR drifts by thousands with pressure and movement, more than one beat; the slope of the smoothed IR
+ * turns slow drift into a small constant the peak threshold ignores. IR drops when blood arrives, hence the minus.
+ */
+export class PulseWave {
+  private det = new PeakDetector();
+  private fast: number | undefined;
+  private prev = { t: 0, v: 0 };
+  get last() { return this.det.last; }
+  push(t: number, ir: number): boolean {
+    if (this.fast == null || t <= this.prev.t) { this.fast = ir; this.prev = { t, v: ir }; return false; }
+    this.fast += (ir - this.fast) * 0.3; // ~30 ms smoothing at 100 Hz
+    const slope = this.prev.v - this.fast; // per sample, not per µs: bunched FIFO timestamps (70 µs apart) would blow it up
+    this.prev = { t, v: this.fast };
+    return this.det.push(t, slope);
+  }
+}
+
 /** Raw PPG from the band: "P,<micros>,<ir>", ~100 per second. */
 export interface PulseSample { tUs: number; ir: number }
 export function parsePulseLine(line: string): PulseSample | null {
