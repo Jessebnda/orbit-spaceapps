@@ -82,7 +82,7 @@ export function TodayScreen() {
           </Press>
         )}
         {dataSource === 'sim' && <Text style={font('small', color.muted)}>Simulación · datos de demostración</Text>}
-        {Object.keys(metrics).length ? overall === 'ok' ? <Text style={font('body', color.muted)}>Tus signos están dentro de rango.</Text> : <StatusMark label={STATUS_LABEL[overall]} tone={overall} /> : <Text style={font('body', color.muted)}>Conecta tus sensores para ver tus signos.</Text>}
+        {Object.keys(metrics).length ? overall === 'ok' ? <Text style={font('body', color.muted)}>Tus signos están dentro de rango.</Text> : <StatusMark label={`${STATUS_LABEL[overall]}: ${(Object.keys(metrics) as MetricKey[]).filter((k) => statusOf(k, metrics[k]) === overall).map((k) => METRIC_META[k].label.toLowerCase()).join(', ')}`} tone={overall} /> : <Text style={font('body', color.muted)}>Conecta tus sensores para ver tus signos.</Text>}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {VITALS.map((k) => (
             <MetricTile key={k} metric={k} value={metrics[k]} values={trend(k)} large width={tile} onPress={() => setMetric(k)} />
@@ -94,10 +94,10 @@ export function TodayScreen() {
             {(['activity', 'kcal', 'water'] as MetricKey[]).map((k) => <Press key={k} label={`${METRIC_META[k].label}, ${formatMetric(k, metrics[k])}`} onPress={() => setMetric(k)} style={{ alignItems: 'center', gap: 8 }}>
               <Ring size={56} stroke={4} value={(metrics[k] ?? 0) / GOALS[k]!} mark={(THRESHOLDS[k][1] * dayProgress(Date.now())) / GOALS[k]!} tint={color.muted}><Text style={figureFont('small')}>{metrics[k] == null ? '—' : Math.round((metrics[k]! / GOALS[k]!) * 100)}{metrics[k] != null ? '%' : ''}</Text></Ring>
               <Text style={font('caption')}>{METRIC_META[k].label}</Text>
-              <Text style={font('small', color.muted)}>{formatMetric(k, metrics[k])}</Text>
+              <Text style={figureFont('small', color.muted)}>{metrics[k] == null ? 'Meta ' : `${formatMetric(k, metrics[k])} de `}{formatMetric(k, GOALS[k])}</Text>
             </Press>)}
           </Card>
-          <Text style={font('small', color.muted)}>La marca indica el avance esperado a esta hora. Metas: 120 min · 2400 kcal · 2.5 L</Text>
+          <Text style={font('small', color.muted)}>La marca indica el avance esperado a esta hora.</Text>
         </Section>
 
         <FormSection title="Más métricas">
