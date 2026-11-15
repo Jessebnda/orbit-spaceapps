@@ -33,10 +33,7 @@ async function connectAll() {
       try {
         const dev = await bt.connectToDevice(d.address, { delimiter: '\n', charset: 'ascii' });
         if (!active) { void dev.disconnect(); return; }
-        const decode = vitalsDecoder((m) => {
-          console.log('[bt] vitales', JSON.stringify(m));
-          onM(m);
-        });
+        const decode = vitalsDecoder((m) => onM(m));
         let raw = 3;
         const sub = dev.onDataReceived((e) => {
           if (raw > 0 && raw--) console.log('[bt] linea', e.data);

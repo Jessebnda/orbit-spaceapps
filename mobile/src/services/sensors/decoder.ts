@@ -1,6 +1,6 @@
 import { HeartRate, LineBuffer, parseSensorLine, type Metrics } from '@orbit/shared';
 
-const EMIT_MS = 500; // UI refresh; history is still sampled per minute in the store
+const EMIT_MS = 100; // UI refresh; history is still sampled per minute in the store
 
 /**
  * One decoder per wearable link. Accepts both wire formats: JSON metrics every 2 s (reference firmware)
