@@ -16,7 +16,7 @@ export function CommsPanel({ crewId, records, names, now, anomalies, error, load
         {error ? (
           <EmptyState compact title="No se pudo leer la comunicación" hint={error} />
         ) : (
-          <InView height={320}>{loading ? <div className="skeleton h-full rounded-md" /> : <CommsChart crewId={crewId} records={records} names={names} now={now} />}</InView>
+          <InView height={300}>{loading ? <div className="skeleton h-full rounded-md" /> : <CommsChart crewId={crewId} records={records} names={names} now={now} />}</InView>
         )}
       </Panel>
       <section className="lg:col-span-4 lg:pt-5" aria-labelledby="alerts-h">

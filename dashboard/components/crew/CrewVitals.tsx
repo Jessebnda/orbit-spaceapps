@@ -44,7 +44,7 @@ export function CrewVitals({ metrics, series24, series14, now, error }: { metric
 
   return (
     <section aria-label="Signos vitales" className="space-y-6">
-      <div ref={tabs} role="tablist" aria-label="Signo vital" onKeyDown={onKey} className="grid gap-6 md:grid-cols-3">
+      <div ref={tabs} role="tablist" aria-label="Signo vital" onKeyDown={onKey} className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6">
         {VITALS.map((k) => {
           const v = metrics[k];
           const st = statusOf(k, v);
@@ -65,7 +65,7 @@ export function CrewVitals({ metrics, series24, series14, now, error }: { metric
               </span>
               <span className="mt-3 block"><RangeBar metric={k} value={v} base={b} label={`${METRIC_META[k].label}: ${v == null ? "sin dato" : formatMetric(k, v)}`} /></span>
               <span className="t-micro mt-1 flex justify-between text-ink3"><span>{Math.round(lo)}</span><span>{Math.round(hi)}</span></span>
-              <span className="t-micro mt-1 flex h-3.5 items-center gap-1 text-muted">
+              <span className="t-micro mt-1 flex min-h-3.5 items-center gap-1 text-muted">
                 {t ? <><G size={11} aria-hidden />{t.dir === "flat" ? "igual que tu media de 7 días" : `${t.delta > 0 ? "+" : "−"}${Math.abs(t.delta).toFixed(k === "temp" ? 1 : 0)} · tu media de 7 días`}</> : "Aún sin media de 7 días"}
               </span>
             </button>

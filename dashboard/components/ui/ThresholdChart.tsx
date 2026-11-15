@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { METRIC_META, THRESHOLDS, formatMetric, statusOf, type MetricKey, type Status } from "@orbit/shared";
 import { downsample } from "@/lib/domain/downsample";
@@ -10,6 +10,11 @@ import { domainOf } from "@/lib/domain/vitals";
 import { chart, statusColor, tooltipStyle } from "@/lib/theme";
 
 export interface Point { ts: number; v: number }
+
+// Phones can't spare 112 px for limit labels beside the plot: there they sit inside it, over their line.
+const NARROW = "(max-width: 639px)";
+const subscribe = (cb: () => void) => { const m = matchMedia(NARROW); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
+const useNarrow = () => useSyncExternalStore(subscribe, () => matchMedia(NARROW).matches, () => false);
 
 const tick = { fill: "#98989F", fontSize: 11 };
 const day = (t: number) => new Date(t).toLocaleDateString("es", { day: "numeric", month: "short" });
@@ -34,6 +39,7 @@ export function ThresholdChart({ metric, points, span }: { metric: MetricKey; po
     const t0 = pts[0]?.ts ?? 0, t1 = pts[pts.length - 1]?.ts ?? 0;
     return { data: rows, ticks, last: pts[pts.length - 1], xticks: Array.from({ length: 5 }, (_, i) => t0 + ((t1 - t0) * i) / 4) };
   }, [metric, points]);
+  const narrow = useNarrow();
   const [, wl, wh, ch] = THRESHOLDS[metric];
   const top = ticks[ticks.length - 1], bottom = ticks[0];
   const fmt = (t: number) => (span === "14d" ? day(t) : fmtClock(t));
@@ -46,13 +52,13 @@ export function ThresholdChart({ metric, points, span }: { metric: MetricKey; po
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 12, right: 112, bottom: 0, left: 0 }}>
+      <LineChart data={data} margin={{ top: 12, right: narrow ? 8 : 112, bottom: 0, left: 0 }}>
         <ReferenceArea y1={Math.max(wl, bottom)} y2={Math.min(wh, top)} fill="#fff" fillOpacity={0.05} stroke="none" />
         <CartesianGrid horizontal vertical={false} stroke="#2C2C2E" />
         <XAxis dataKey="ts" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={fmt} tick={tick} tickLine={false} axisLine={false} ticks={xticks} padding={{ left: 8, right: 0 }} />
         <YAxis domain={[bottom, top]} ticks={ticks} tick={tick} tickLine={false} axisLine={false} width={40} />
         {lines.map((l) => (
-          <ReferenceLine key={l.text} y={l.y} stroke={l.c} strokeOpacity={0.7} strokeDasharray="3 3" label={{ value: l.text, position: "right", fill: l.c, fontSize: 11 }} />
+          <ReferenceLine key={l.text} y={l.y} stroke={l.c} strokeOpacity={0.7} strokeDasharray="3 3" label={{ value: l.text, position: narrow ? "insideTopRight" : "right", fill: l.c, fontSize: 11 }} />
         ))}
         <Tooltip contentStyle={{ ...tooltipStyle, border: "none", background: "#2C2C2E" }} labelFormatter={(t) => fmt(Number(t))} formatter={(v) => [formatMetric(metric, Number(v)), METRIC_META[metric].label]} cursor={{ stroke: "#98989F", strokeWidth: 1 }} />
         {(["ok", "watch", "critical"] as Status[]).map((s) => (

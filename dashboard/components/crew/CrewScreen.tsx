@@ -65,7 +65,8 @@ export function CrewScreen({ id }: { id: string }) {
             <StatusMark variant="pill" status={status} />
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        {/* Phones stack the two actions full width instead of pushing the second off screen. */}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
           <Link href={`/asistente`} className="btn-lg"><Sparkles size={14} strokeWidth={1.5} aria-hidden />Preguntar al asistente</Link>
           <Link href={`/protocolos?para=${id}`} className="btn-lg primary"><Send size={14} strokeWidth={1.5} aria-hidden />Enviar protocolo</Link>
         </div>

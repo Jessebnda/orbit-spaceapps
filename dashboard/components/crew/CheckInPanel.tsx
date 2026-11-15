@@ -12,12 +12,12 @@ const WORDS: Record<string, string[]> = {
 /** Five 28 x 6 segments. Polarity is said in words ("Estrés 2/5 · bajo"), never with red/green per value. */
 function Scale({ label, k, v }: { label: string; k: keyof typeof WORDS; v: number }) {
   return (
-    <div className="flex min-h-11 items-center gap-4">
-      <span className="t-small w-36 shrink-0 text-muted">{label}</span>
+    <div className="flex min-h-11 items-center gap-3 sm:gap-4">
+      <span className="t-small w-24 shrink-0 text-muted sm:w-36">{label}</span>
       <span className="flex gap-1" role="meter" aria-valuemin={0} aria-valuemax={5} aria-valuenow={v} aria-label={`${label} ${v} de 5`}>
-        {[1, 2, 3, 4, 5].map((i) => <span key={i} className={`h-1.5 w-7 rounded-[3px] ${i <= v ? "bg-ink" : "bg-raised"}`} />)}
+        {[1, 2, 3, 4, 5].map((i) => <span key={i} className={`h-1.5 w-4 rounded-[3px] sm:w-7 ${i <= v ? "bg-ink" : "bg-raised"}`} />)}
       </span>
-      <span className="t-small ml-auto tabular-nums">{v}/5 <span className="text-muted">· {WORDS[k][v].toLowerCase()}</span></span>
+      <span className="t-small ml-auto text-right tabular-nums">{v}/5 <span className="text-muted max-sm:block"><span className="max-sm:hidden">· </span>{WORDS[k][v].toLowerCase()}</span></span>
     </div>
   );
 }
