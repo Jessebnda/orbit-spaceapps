@@ -169,3 +169,16 @@ export function parsePulseLine(line: string): PulseSample | null {
   const tUs = Number(c[1]), ir = Number(c[2]);
   return Number.isFinite(tUs) && Number.isFinite(ir) && c[1] !== '' && c[2] !== '' ? { tUs, ir } : null;
 }
+
+/**
+ * Blood pressure from pulse transit time, Poon & Zhang (2005) model: SBP = SBP0 − (2/γ)·ln(PTT/PTT0).
+ * shortcut: population calibration (an average adult at rest: 120/80 at ~260 ms chest→wrist, γ = 0.017/mmHg);
+ * replace PTT0/SBP0/DBP0 with one cuff reading per astronaut before trusting the absolute number.
+ */
+export function bpFromPtt(ptt: number, cal = { ptt: 260, sys: 120, dia: 80 }): { sys: number; dia: number } {
+  const k = 2 / 0.017, r = cal.ptt / ptt;
+  const sys = cal.sys + k * Math.log(r);
+  const dia = cal.sys / 3 + (2 * cal.dia) / 3 + k * Math.log(r) - ((cal.sys - cal.dia) / 3) * r * r;
+  const clamp = (v: number, lo: number, hi: number) => Math.round(Math.min(hi, Math.max(lo, v)));
+  return { sys: clamp(sys, 70, 200), dia: clamp(dia, 40, 130) };
+}

@@ -4,7 +4,7 @@ import type { BleManager as BleMgr, Device as BleDevice } from 'react-native-ble
 import { ENV } from '../../config/env';
 import { useStore } from '../../store/store';
 import { classic } from './classic';
-import { vitalsDecoder } from './decoder';
+import { bpIsMeasured, vitalsDecoder } from './decoder';
 import type { SensorSource } from './types';
 
 // Optional native module: absent in Expo Go, where the simulator is the source.
@@ -29,12 +29,13 @@ let peerTimer: ReturnType<typeof setInterval> | null = null;
 let bpTimer: ReturnType<typeof setInterval> | null = null;
 
 // shortcut: MOCK blood pressure for the demo, a random walk inside a healthy resting range (110–120 / 70–80 mmHg).
-// No wearable measures BP yet; replace with pulse-arrival-time (chest ECG + PPG on one ESP32) and a cuff calibration.
+// Steps aside while decoder.ts estimates BP from pulse transit time (chest ECG + wrist PPG).
 const BP_SYS: [number, number] = [110, 120], BP_DIA: [number, number] = [70, 80];
 function mockBp(onMetrics: (m: Metrics) => void) {
   let sys = 115, dia = 75;
   const walk = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, v + (Math.random() - 0.5) * 2));
   const tick = () => {
+    if (bpIsMeasured()) return; // the chest + wrist pair is giving real pulse-transit estimates
     sys = walk(sys, BP_SYS);
     dia = walk(dia, BP_DIA);
     onMetrics({ bpSys: Math.round(sys), bpDia: Math.round(dia) });

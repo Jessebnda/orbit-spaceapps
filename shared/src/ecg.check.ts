@@ -1,5 +1,5 @@
 // Run: npm run check (from shared/). Asserts for the wearable CSV parser and the heart-rate estimator.
-import { HeartRate, LineBuffer, PeakDetector, PulseWave, parseHeadLine, parsePulseLine, parseSensorLine, type SensorSample } from './ecg';
+import { HeartRate, LineBuffer, PeakDetector, PulseWave, bpFromPtt, parseHeadLine, parsePulseLine, parseSensorLine, type SensorSample } from './ecg';
 
 function check(v: boolean, m: string) { if (!v) throw new Error(m); }
 
@@ -72,4 +72,7 @@ for (let t = 0; t < 20000; t += 10) {
   if (pw.push(t, 90000 + 5000 * Math.sin(t / 3000) - beat + (Math.random() - 0.5) * 20) && t > 3000) { if (prevP != null) gaps.push(pw.last! - prevP); prevP = pw.last; }
 }
 check(gaps.length >= 19 && gaps.every((g) => Math.abs(g - 800) < 60), `PPG beats every 800 ms despite drift: ${gaps.join(',')}`);
+const bp0 = bpFromPtt(260), bpFast = bpFromPtt(240), bpSlow = bpFromPtt(280);
+check(bp0.sys === 120 && bp0.dia === 80, 'calibration point gives 120/80');
+check(bpFast.sys > 125 && bpFast.dia > 82 && bpSlow.sys < 115 && bpSlow.dia < 78, `shorter transit = higher pressure (${bpFast.sys}/${bpFast.dia}, ${bpSlow.sys}/${bpSlow.dia})`);
 console.log('ecg.check: ok');
