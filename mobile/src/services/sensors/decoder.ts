@@ -1,8 +1,10 @@
 import { HeartRate, LineBuffer, parseSensorLine, type Metrics } from '@orbit/shared';
 
+const EMIT_MS = 1000; // UI refresh; history is still sampled per minute in the store
+
 /**
  * One decoder per wearable link. Accepts both wire formats: JSON metrics every 2 s (reference firmware)
- * or the raw CSV stream (ECG 50 Hz + IMU/temp 10 Hz), and emits metrics at most every 2 s of device time.
+ * or the raw CSV stream (ECG 50 Hz + IMU/temp 10 Hz), and emits metrics at most once per EMIT_MS of device time.
  */
 export function vitalsDecoder(onM: (m: Metrics) => void) {
   const lines = new LineBuffer();
@@ -26,7 +28,7 @@ export function vitalsDecoder(onM: (m: Metrics) => void) {
       // shortcut: no skin→core offset yet, calibrate once the sensor sits on the body.
       if (sample.temp != null) temp = sample.temp;
       if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
-      if (sample.t - lastEmit < 2000) continue;
+      if (sample.t - lastEmit < EMIT_MS) continue;
       lastEmit = sample.t;
       const m: Metrics = {};
       if (bpm != null) m.hr = bpm;
