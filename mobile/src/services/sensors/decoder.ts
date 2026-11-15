@@ -22,9 +22,9 @@ export function vitalsDecoder(onM: (m: Metrics) => void) {
       const sample = parseSensorLine(line);
       if (!sample) continue;
       const bpm = hr.push(sample);
-      // The GY-906 reads whatever it points at; below 30 °C it is reading air, not skin, and would raise a false hypothermia alarm.
-      // shortcut: fixed cut-off, replace with a skin→core offset once the sensor sits on the body.
-      if (sample.temp != null) temp = sample.temp >= 30 ? sample.temp : undefined;
+      // Raw surface temperature; statusOf treats < 30 °C as "not on the body" instead of hypothermia.
+      // shortcut: no skin→core offset yet, calibrate once the sensor sits on the body.
+      if (sample.temp != null) temp = sample.temp;
       if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
       if (sample.t - lastEmit < 2000) continue;
       lastEmit = sample.t;

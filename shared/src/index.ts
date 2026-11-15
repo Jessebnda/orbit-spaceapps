@@ -62,6 +62,8 @@ export function dayProgress(now: number): number {
 
 export function statusOf(key: MetricKey, v: number | undefined, now = Date.now()): Status {
   if (v == null || Number.isNaN(v)) return 'ok';
+  // The GY-906 reads the surface it points at: under 30 °C it is reading air, not a body. Flag it, don't sound hypothermia.
+  if (key === 'temp' && v < 30) return 'watch';
   let [cl, wl, wh, ch] = THRESHOLDS[key];
   if (CUMULATIVE_METRICS.includes(key)) {
     // Pro-rate minimums so 1200 kcal at 11:00 isn't flagged against a full-day target.

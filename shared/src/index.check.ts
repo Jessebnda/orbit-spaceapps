@@ -3,6 +3,8 @@ import { statusOf, worstStatus, nearestResponders, parseBleName, commsAnomalies,
 
 assert.equal(statusOf('hr', 72), 'ok');
 assert.equal(statusOf('hr', 110), 'watch');
+assert.equal(statusOf('temp', 24.4), 'watch'); // GY-906 reading air, not hypothermia
+assert.equal(statusOf('temp', 34.5), 'critical');
 assert.equal(statusOf('hr', 35), 'critical');
 assert.equal(statusOf('spo2', 99), 'ok');           // no upper critical for SpO2
 assert.equal(statusOf('spo2', 90), 'watch');
