@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { sendStat } from '../../services/hub';
 import { useStore, type Exploration } from '../../store/store';
 import { dayKey } from '../../domain/derive';
@@ -10,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Icon } from '../../components/ui/Icon';
 import { LabeledRow } from '../../components/ui/SettingsGroup';
 import { Press } from '../../components/ui/Press';
+import { RouteMap } from '../../components/ui/RouteMap';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 const num = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
@@ -18,54 +20,58 @@ const ago = (ts: number) => {
   return m < 60 ? `hace ${Math.max(1, m)} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
 };
 
-function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
+function Stat({ label, value, unit, first }: { label: string; value: string; unit?: string; first?: boolean }) {
   return (
-    <View style={{ flex: 1, gap: 2 }}>
-      <Text style={{ ...font('small', color.faint), fontSize: 11 }}>{label}</Text>
-      <Text style={figureFont('figure')} numberOfLines={1} adjustsFontSizeToFit>{value}{unit ? <Text style={font('body', color.muted)}> {unit}</Text> : null}</Text>
+    <View style={{ flex: 1, gap: 2, paddingLeft: first ? 0 : 12, borderLeftWidth: first ? 0 : StyleSheet.hairlineWidth, borderLeftColor: color.hairline }}>
+      <Text style={font('small', color.faint)}>{label}</Text>
+      <Text style={{ ...figureFont('button'), fontSize: 22, lineHeight: 28 }} numberOfLines={1} adjustsFontSizeToFit>{value}{unit ? <Text style={font('small', color.muted)}> {unit}</Text> : null}</Text>
     </View>
   );
 }
 
-function Card1({ e, max, median }: { e: Exploration; max: number; median: number }) {
+function Card1({ e, max }: { e: Exploration; max: number }) {
   const pace = e.km > 0 ? (e.minutes / e.km) * 60 : 0;
+  const longest = e.km >= max && e.km > 0;
   const remove = () => Alert.alert('Eliminar exploración', undefined, [
     { text: 'Eliminar', style: 'destructive', onPress: () => useStore.setState((s) => ({ explorations: s.explorations.filter((x) => x.id !== e.id) })) },
     { text: 'Cancelar', style: 'cancel' },
   ]);
   return (
-    <Card style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={font('button')} numberOfLines={2}>{e.title}</Text>
-          <Text style={font('small', color.muted)}>{[e.place, ago(e.ts)].filter(Boolean).join(' · ')}</Text>
+    <Card pad={0} style={{ overflow: 'hidden' }}>
+      <View style={{ padding: 16, gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.raised, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="figure.run" size={18} color={color.text} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={font('button')} numberOfLines={1}>{e.title}</Text>
+            <Text style={font('small', color.muted)} numberOfLines={1}>{[e.place, ago(e.ts)].filter(Boolean).join(' · ')}</Text>
+          </View>
+          <Press label="Eliminar exploración" onPress={remove} style={{ width: 44, height: 44, marginRight: -12, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="list.bullet" size={18} color={color.faint} />
+          </Press>
         </View>
-        <Press label="Más opciones" onPress={remove} style={{ width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="list.bullet" size={18} color={color.muted} />
-        </Press>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Stat label="Distancia" value={e.km > 0 ? num(e.km) : '—'} unit="km" />
-        <Stat label="Tiempo" value={clock(e.minutes * 60)} />
-        <Stat label="Ritmo" value={pace ? clock(Math.round(pace)) : '—'} unit="/km" />
-      </View>
-      <View style={{ gap: 4 }} accessible accessibilityLabel={`Contra tu media: ${num(e.km)} km, tu salida más larga ${num(max)} km`}>
-        <Text style={{ ...font('small', color.faint), fontSize: 11 }}>Contra tu media</Text>
-        <View style={{ height: 6, borderRadius: 3, backgroundColor: color.raised }}>
-          <View style={{ height: 6, borderRadius: 3, width: `${Math.min(1, e.km / (max || 1)) * 100}%`, backgroundColor: color.accent }} />
-          <View style={{ position: 'absolute', left: `${Math.min(1, median / (max || 1)) * 100}%`, top: -2, width: 1, height: 10, backgroundColor: color.muted }} />
+        <View style={{ flexDirection: 'row' }}>
+          <Stat first label="Distancia" value={e.km > 0 ? num(e.km) : '—'} unit="km" />
+          <Stat label="Ritmo" value={pace ? clock(Math.round(pace)) : '—'} unit="/km" />
+          <Stat label="Tiempo" value={clock(e.minutes * 60)} />
         </View>
       </View>
-      {e.km >= max && e.km > 0 ? (
-        <View style={{ alignSelf: 'flex-start', height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: alpha(color.accent, 0.14), justifyContent: 'center' }}>
-          <Text style={font('caption', color.accentText)}>Tu salida más larga</Text>
-        </View>
-      ) : null}
+      <View style={{ backgroundColor: color.bg }}>
+        <RouteMap seed={e.id} km={e.km} />
+        {longest ? (
+          <View style={{ position: 'absolute', top: 12, left: 12, height: 26, paddingHorizontal: 10, borderRadius: 13, backgroundColor: alpha(color.surface, 0.9), flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="bolt.fill" size={12} color={color.text} />
+            <Text style={font('status')}>Tu salida más larga</Text>
+          </View>
+        ) : null}
+      </View>
     </Card>
   );
 }
 
 function RecordSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets(); // Android draws the page sheet full screen, under the status bar
   const [running, setRunning] = useState(false);
   const [secs, setSecs] = useState(0);
   const [title, setTitle] = useState('');
@@ -89,7 +95,7 @@ function RecordSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: color.bg }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 8, paddingTop: Platform.OS === 'android' ? insets.top + 8 : 16 }}>
           <Press label="Cancelar" onPress={() => { reset(); onClose(); }}><Text style={font('body', color.accentText)}>Cancelar</Text></Press>
           <Press label="Guardar exploración" disabled={secs === 0 && !km} haptic="success" onPress={save}><Text style={font('button', color.accentText)}>Guardar</Text></Press>
         </View>
@@ -97,7 +103,7 @@ function RecordSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           <View style={{ alignItems: 'center', gap: 16 }}>
             <Text style={font('hud')} accessibilityLabel={`Tiempo ${clock(secs)}`}>{clock(secs)}</Text>
             <Press label={running ? 'Pausar' : 'Iniciar cronómetro'} haptic="light" onPress={() => setRunning((r) => !r)} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: running ? color.raised : color.accent, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={running ? 'pause.fill' : 'play.fill'} size={28} color={color.text} />
+              <Icon name={running ? 'pause.fill' : 'play.fill'} size={28} color={running ? color.text : color.onAccent} />
             </Press>
           </View>
           <FormSection title="Detalles">
@@ -111,16 +117,16 @@ function RecordSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   );
 }
 
-/** Exploraciones tipo Strava: resumen semanal con barras, botón de registrar (hoja) y tarjetas con 3 cifras. Sin mapa: no hay GPS. */
+/** Exploraciones tipo Strava: resumen semanal con barras, botón de registrar (hoja) y tarjetas con 3 cifras. El plano es dibujado (no hay GPS), el mismo que en el monitor. */
 export function ExplorationLog() {
   const explorations = useStore((s) => s.explorations);
   const [recording, setRecording] = useState(false);
   const week = lastDays(7, Date.now(), dayKey);
   const perDay = week.map((d) => explorations.filter((e) => dayKey(e.ts) === d.key).reduce((s, e) => s + e.km, 0));
   const weekKm = perDay.reduce((s, v) => s + v, 0);
-  const kms = explorations.map((e) => e.km).filter((k) => k > 0).sort((a, b) => a - b);
-  const max = kms[kms.length - 1] ?? 0;
-  const median = kms.length ? kms[Math.floor(kms.length / 2)]! : 0;
+  const weekRuns = explorations.filter((e) => week.some((d) => d.key === dayKey(e.ts)));
+  const weekMin = weekRuns.reduce((t, e) => t + e.minutes, 0);
+  const max = Math.max(0, ...explorations.map((e) => e.km));
 
   return (
     <Section title="Exploraciones">
@@ -129,17 +135,26 @@ export function ExplorationLog() {
       ) : (
         <>
           <Card style={{ gap: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-              <Text style={figureFont('display')}>{num(weekKm)}</Text>
-              <Text style={font('body', color.muted)}>km esta semana</Text>
+            <View style={{ gap: 2 }}>
+              <Text style={font('caption', color.faint)}>Esta semana</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                <Text style={figureFont('display')}>{num(weekKm)}</Text>
+                <Text style={font('body', color.muted)}>km</Text>
+              </View>
             </View>
-            <Bars values={perDay} labels={week.map((d) => d.label)} height={72} />
+            <View style={{ flexDirection: 'row' }}>
+              <Stat first label="Salidas" value={String(weekRuns.length)} />
+              <Stat label="Tiempo" value={weekMin >= 60 ? `${Math.floor(weekMin / 60)} h ${weekMin % 60}` : String(weekMin)} unit="min" />
+              <Stat label="Ritmo medio" value={weekKm > 0 ? clock(Math.round((weekMin / weekKm) * 60)) : '—'} unit="/km" />
+            </View>
+            <Bars values={perDay} labels={week.map((d) => d.label)} height={64} />
           </Card>
-          <Press label="Registrar exploración" haptic="light" onPress={() => setRecording(true)} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Press label="Registrar exploración" haptic="light" onPress={() => setRecording(true)} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="play.fill" size={16} color={color.onAccent} />
             <Text style={font('button', color.onAccent)}>Registrar exploración</Text>
           </Press>
           <View style={{ gap: 12 }}>
-            {explorations.slice(0, 10).map((e) => <Card1 key={e.id} e={e} max={max} median={median} />)}
+            {explorations.slice(0, 10).map((e) => <Card1 key={e.id} e={e} max={max} />)}
           </View>
         </>
       )}

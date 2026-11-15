@@ -9,6 +9,35 @@ import { vitalsDecoder } from './decoder';
 const WEARABLE = /^(ORB-|ESP)/i; // ESP32_Sensores, ESP Banda, ...
 const NOT_WEARABLE = /robot/i; // other ESP32 projects paired to the same phone
 const RETRY_MS = 5000;
+const SYNC_MS = 2000;
+
+/**
+ * Clock sync, NTP style. Phone sends "S,<n>"; the ESP32 answers "S,<n>,<micros()>" right away.
+ * offset = esp - (sent + received) / 2, trusting the sample with the shortest round trip.
+ */
+function syncer(name: string, dev: BluetoothDevice) {
+  const sent = new Map<number, number>();
+  let n = 0;
+  let best = { rtt: Infinity, offset: 0 };
+  const timer = setInterval(() => {
+    n++;
+    sent.set(n, performance.now());
+    sent.delete(n - 10);
+    console.log('[sync] envia', name, `S,${n}`);
+    void dev.write(`S,${n}\n`).catch((e) => console.warn('[sync] write', name, (e as Error)?.message));
+  }, SYNC_MS);
+  const reply = (line: string) => {
+    const back = performance.now();
+    const [, seq, micros] = line.trim().split(',');
+    const t0 = sent.get(Number(seq));
+    if (t0 == null || !Number.isFinite(Number(micros))) return console.log('[sync] respuesta rara', name, line.trim());
+    const rtt = back - t0;
+    const offset = Number(micros) / 1000 - (t0 + back) / 2;
+    if (rtt < best.rtt) best = { rtt, offset };
+    console.log('[sync] recibe', name, line.trim(), `rtt=${rtt.toFixed(1)}ms offset=${offset.toFixed(1)}ms mejor_rtt=${best.rtt.toFixed(1)}ms mejor_offset=${best.offset.toFixed(1)}ms`);
+  };
+  return { reply, stop: () => clearInterval(timer) };
+}
 
 let active = false;
 let onM: (m: Metrics) => void = () => {};
@@ -54,10 +83,13 @@ async function connectAll() {
           }
         }, mark);
         let raw = 3;
-        link.sub = dev.onDataReceived((e) => {
+        const sync = syncer(d.name, dev);
+        const sub = dev.onDataReceived((e) => {
+          if (e.data.startsWith('S,')) return sync.reply(e.data);
           if (raw > 0 && raw--) console.log('[bt] linea', d.name, e.data);
           decode(`${e.data}\n`);
         });
+        link.sub = { remove: () => { sync.stop(); sub.remove(); } };
         links.set(d.address, link);
       } catch (e) {
         console.warn('[bt] no conecta', d.name, (e as Error)?.message); // busy with another app, off, or out of range
