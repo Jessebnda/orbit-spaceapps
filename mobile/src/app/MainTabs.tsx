@@ -104,13 +104,15 @@ export function MainTabs() {
   const pending = protocols.filter((p) => !done.includes(p.id));
   const androidIcons = useAndroidTabIcons();
   const tabIcon = (name: IconName) => () => (Platform.OS === 'ios' ? { sfSymbol: name } : androidIcons?.[name]) as never;
-  const badge = pending.length ? (pending.some((p) => p.kind === 'emergency') ? '•' : String(pending.length)) : undefined;
+  const urgent = pending.some((p) => p.kind === 'emergency');
+  const badge = pending.length ? String(pending.length) : undefined;
   if (Platform.OS === 'android' && !androidIcons) return null;
   return (
-    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: color.accent, sceneStyle: { backgroundColor: color.bg } }}>
+    // Android: Material's default lavender indicator and pink badge are the only purple in the app; tint them to the monochrome system.
+    <Tab.Navigator labeled tabBarActiveTintColor={color.text} tabBarInactiveTintColor={color.muted} activeIndicatorColor={color.raised} rippleColor={color.raised} tabBarStyle={{ backgroundColor: color.surface }} screenOptions={{ sceneStyle: { backgroundColor: color.bg } }}>
       <Tab.Screen name="Hoy" component={HoyPage} options={{ title: 'Hoy', tabBarIcon: tabIcon('heart.text.square') }} />
       <Tab.Screen name="Mascota" component={MascotaPage} options={{ title: 'Mascota', tabBarIcon: tabIcon('pawprint') }} />
-      <Tab.Screen name="Protocolos" component={ProtocolosPage} options={{ title: 'Protocolos', tabBarIcon: tabIcon('list.bullet.clipboard'), tabBarBadge: badge }} />
+      <Tab.Screen name="Protocolos" component={ProtocolosPage} options={{ title: 'Protocolos', tabBarIcon: tabIcon('list.bullet.clipboard'), tabBarBadge: badge, tabBarBadgeBackgroundColor: urgent ? color.status.critical : color.accent, tabBarBadgeTextColor: urgent ? color.text : color.onAccent }} />
       <Tab.Screen name="Juego" component={JuegoPage} options={{ title: 'Juego', tabBarIcon: tabIcon('gamecontroller') }} />
       <Tab.Screen name="Yo" component={YoPage} options={{ title: 'Yo', tabBarIcon: tabIcon('person.crop.circle') }} />
     </Tab.Navigator>
