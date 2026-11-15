@@ -1,8 +1,10 @@
-import { BLE, HeartRate, LineBuffer, parseBleName, parseSensorLine, type Device, type Metrics, type Proximity } from '@orbit/shared';
+import { BLE, parseBleName, type Device, type Metrics, type Proximity } from '@orbit/shared';
 import { PermissionsAndroid, Platform } from 'react-native';
 import type { BleManager as BleMgr, Device as BleDevice } from 'react-native-ble-plx';
 import { ENV } from '../../config/env';
 import { useStore } from '../../store/store';
+import { classic } from './classic';
+import { vitalsDecoder } from './decoder';
 import type { SensorSource } from './types';
 
 // Optional native module: absent in Expo Go, where the simulator is the source.
@@ -48,6 +50,7 @@ export const bleSource: SensorSource = {
     if (manager && scanning) manager.stopDeviceScan();
     scanning = false;
     seen.clear();
+    classic.stop();
   },
   /** Background pauses only the proximity scan. Connections to our own devices are kept. */
   setBackground(bg) {
@@ -77,6 +80,7 @@ async function scan() {
     return;
   }
   if (!scanning) return; // stopped while the dialog was open
+  classic.start(onM);
   manager.startDeviceScan(null, { allowDuplicates: true }, (err, d) => {
     if (err) {
       scanning = false;
@@ -114,37 +118,9 @@ function connect(d: BleDevice, device: Device) {
     .then((x) => {
       useStore.getState().setDevice(device, true);
       console.log('[ble] connected', device, d.name);
-      // Two wire formats: JSON metrics every 2 s (reference firmware) or the raw CSV stream (ECG 50 Hz + IMU/temp 10 Hz).
-      const lines = new LineBuffer();
-      const hr = new HeartRate();
-      let lastEmit = 0;
-      let temp: number | undefined;
+      const decode = vitalsDecoder(onM);
       x.monitorCharacteristicForService(BLE.service, BLE.vitalsChar, (err, ch) => {
-        if (err || !ch?.value) return;
-        const text = atob(ch.value);
-        if (text.trimStart().startsWith('{')) {
-          try {
-            onM(JSON.parse(text) as Metrics);
-          } catch {
-            // Truncated JSON: a frame this app does not understand.
-          }
-          return;
-        }
-        for (const line of lines.push(text)) {
-          const sample = parseSensorLine(line);
-          if (!sample) continue;
-          const bpm = hr.push(sample);
-          // The GY-906 reads whatever it points at; below 30 °C it is reading air, not skin, and would raise a false hypothermia alarm.
-          // shortcut: fixed cut-off, replace with a skin→core offset once the sensor sits on the body.
-          if (sample.temp != null) temp = sample.temp >= 30 ? sample.temp : undefined;
-          if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
-          if (sample.t - lastEmit < 2000) continue;
-          lastEmit = sample.t;
-          const m: Metrics = {};
-          if (bpm != null) m.hr = bpm;
-          if (temp != null) m.temp = temp;
-          if (Object.keys(m).length) onM(m);
-        }
+        if (!err && ch?.value) decode(atob(ch.value));
       });
       x.onDisconnected(drop);
     })
