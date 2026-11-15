@@ -82,6 +82,7 @@ export function worstStatus(m: Metrics, now = Date.now()): Status {
 export * from './design'; // design tokens + STATUS_COLOR
 export * from './labels';
 export * from './insights';
+export * from './ecg';
 
 /* ───────────── BLE spec (for the firmware team) ─────────────
  * Each ESP32 advertises its name as `ORB-<crewId>-<device>` (e.g. ORB-c2-vest) so any phone can

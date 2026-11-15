@@ -1,4 +1,4 @@
-import { BLE, parseBleName, type Device, type Metrics, type Proximity } from '@orbit/shared';
+import { BLE, HeartRate, LineBuffer, parseBleName, parseSensorLine, type Device, type Metrics, type Proximity } from '@orbit/shared';
 import type { BleManager as BleMgr, Device as BleDevice } from 'react-native-ble-plx';
 import { ENV } from '../../config/env';
 import { useStore } from '../../store/store';
@@ -85,12 +85,34 @@ function connect(d: BleDevice, device: Device) {
     .then((x) => x.discoverAllServicesAndCharacteristics())
     .then((x) => {
       useStore.getState().setDevice(device, true);
+      // Two wire formats: JSON metrics every 2 s (reference firmware) or the raw CSV stream (ECG 50 Hz + IMU/temp 10 Hz).
+      const lines = new LineBuffer();
+      const hr = new HeartRate();
+      let lastEmit = 0;
+      let temp: number | undefined;
       x.monitorCharacteristicForService(BLE.service, BLE.vitalsChar, (err, ch) => {
         if (err || !ch?.value) return;
-        try {
-          onM(JSON.parse(atob(ch.value)) as Metrics);
-        } catch {
-          // Not JSON: a frame this app does not understand.
+        const text = atob(ch.value);
+        if (text.trimStart().startsWith('{')) {
+          try {
+            onM(JSON.parse(text) as Metrics);
+          } catch {
+            // Truncated JSON: a frame this app does not understand.
+          }
+          return;
+        }
+        for (const line of lines.push(text)) {
+          const sample = parseSensorLine(line);
+          if (!sample) continue;
+          const bpm = hr.push(sample);
+          if (sample.temp != null) temp = sample.temp;
+          if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
+          if (sample.t - lastEmit < 2000) continue;
+          lastEmit = sample.t;
+          const m: Metrics = {};
+          if (bpm != null) m.hr = bpm;
+          if (temp != null) m.temp = temp;
+          if (Object.keys(m).length) onM(m);
         }
       });
       x.onDisconnected(drop);

@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "check": "npx --yes tsx src/index.check.ts"
+    "check": "npx --yes tsx src/index.check.ts && npx --yes tsx src/ecg.check.ts"
   },
   "type": "module"
 }
