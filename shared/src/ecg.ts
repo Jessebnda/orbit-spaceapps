@@ -52,6 +52,8 @@ export interface HeadSample {
 
 export function parseHeadLine(line: string): HeadSample | null {
   const c = line.trim().split(',');
+  // Newer firmware: Tiempo_ms,AccelX..GradosZ,BPM,PromBPM,SpO2. Keep the averaged pulse, it jumps less.
+  if (c.length === 10) c.splice(0, 1), c.splice(6, 2, Number(c[7]) > 0 ? c[7] : c[6]);
   if (c.length !== 8) return null;
   const v = c.map(num);
   if (!v.every((x) => x != null && Number.isFinite(x))) return null;

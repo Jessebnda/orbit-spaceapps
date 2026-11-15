@@ -22,6 +22,10 @@ check(parseSensorLine('0.12,-0.40,9.79,1.5,-2.0,30.1,74,97') === null && parseHe
 const v12 = parseSensorLine('22146,1877,48.1,72,1,-2.58,-0.60,0.01,0.081,-0.408,8.970,24.39');
 check(v12?.leadsOn === true && v12.ecg === 48.1 && v12.temp === 24.39, '12-column firmware (with its bpm) parses like the 11-column one');
 check(parseSensorLine('8501,1734,nan,nan,0,,,,,,,')?.leadsOn === false, '12-column line with electrodes off is kept');
+const h10 = parseHeadLine('203427,0.02,-0.01,0.09,359.5,350.1,4.0,71,74,97');
+check(h10?.bpm === 74 && h10.spo2 === 97 && h10.angle.z === 4, `10-column band uses the averaged pulse: ${JSON.stringify(h10)}`);
+check(parseHeadLine('203427,0.02,-0.01,0.09,359.5,350.1,4.0,72,0,97')?.bpm === 72, '10-column band falls back to BPM before the average exists');
+check(parseHeadLine('Tiempo_ms,AccelX,AccelY,AccelZ,GradosX,GradosY,GradosZ,BPM,PromBPM,SpO2') === null && parseSensorLine('203427,0.02,-0.01,0.09,359.5,350.1,4.0,71,74,97') === null, '10-column band header dropped, never read as chest');
 const off = parseSensorLine('2806145,1859,nan,0,-2.1,-0.9,-32.7,0.17,-0.29,8.97,24.2');
 check(off != null && !off.leadsOn && off.temp === 24.2, 'nan ECG (electrodes off) still yields temperature');
 
