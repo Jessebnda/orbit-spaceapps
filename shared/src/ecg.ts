@@ -1,9 +1,10 @@
-// Wearable CSV stream: one reading per line, ~20 ms apart, comma separated.
-//   t_ms, ecg_raw, ecg_filtered, leads_ok, angX, angY, angZ, accX, accY, accZ, temp_c
-// ECG is sent 50x/s; IMU + temperature every 5th line (the other columns are empty).
+// Chest CSV stream: one ECG reading per line, comma separated. Two firmware versions:
+//   11 columns, 50 Hz:  t_ms, ecg_raw, ecg_filtered, leads_ok, angX, angY, angZ, accX, accY, accZ, temp_c
+//   12 columns, 250 Hz: t_us, ecg_raw, ecg_filtered, bpm, leads_ok, ... (same tail; its bpm is ignored)
+// IMU + temperature only on some lines (every 5th / 25th); the other columns are empty.
 
 export interface SensorSample {
-  /** ms since the ESP32 booted. */
+  /** ms since the ESP32 booted, fractional for the µs firmware. micros() wraps every ~71.6 min (seen as a reboot). */
   t: number;
   /** 0..4095 ADC counts. */
   ecgRaw: number;
@@ -24,14 +25,15 @@ const num = (s: string | undefined) => (s == null || s.trim() === '' ? undefined
 /** Null for blank lines, headers, truncated lines and anything non-numeric (BLE can cut a line in half). */
 export function parseSensorLine(line: string): SensorSample | null {
   const c = line.trim().split(',');
-  // Newer firmware adds its own bpm as column 4; the app computes pulse from the ECG itself, so drop it.
-  if (c.length === 12) c.splice(3, 1);
+  // 12-column firmware: time in µs and its own bpm as column 4; the app computes pulse from the ECG itself, so drop it.
+  const us = c.length === 12;
+  if (us) c.splice(3, 1);
   if (c.length !== 11) return null; // other wearables send other column counts (see parseHeadLine)
   const [t, ecgRaw, ecg, leads] = [num(c[0]), num(c[1]), num(c[2]), num(c[3])];
   if (t == null || ecgRaw == null || leads == null || ![t, ecgRaw].every(Number.isFinite)) return null;
   // Electrodes off: the firmware sends "nan" for the filtered ECG. Keep the line for IMU/temp, mark the ECG unusable.
   const ecgOk = ecg != null && Number.isFinite(ecg);
-  const out: SensorSample = { t, ecgRaw, ecg: ecgOk ? ecg : 0, leadsOn: leads === 1 && ecgOk };
+  const out: SensorSample = { t: us ? t / 1000 : t, ecgRaw, ecg: ecgOk ? ecg : 0, leadsOn: leads === 1 && ecgOk };
   const v = c.slice(4, 11).map(num);
   if (v.length === 7 && v.every((x) => x != null && Number.isFinite(x))) {
     out.angle = { x: v[0]!, y: v[1]!, z: v[2]! };
@@ -77,31 +79,56 @@ export class LineBuffer {
 }
 
 const REFRACTORY_MS = 300; // 200 bpm ceiling
-const WINDOW = 150; // 3 s at 50 Hz
+const WINDOW_MS = 3000;
 const MIN_SWING = 20; // filtered-ECG units; below this the trace is flat noise
 
 /**
- * Beats per minute from the filtered ECG: R peaks = local maxima in the top 40 % of the last 3 s,
- * at least 300 ms apart; bpm = 60000 / median of the last 5 R-R intervals.
+ * Peaks in a stream: each stretch above 60 % of the last 3 s range gives one peak, at its highest sample,
+ * at least 300 ms after the previous one. The highest sample (not the first crossing) keeps the timing
+ * exact at 250 Hz, which pulse transit time needs.
+ */
+export class PeakDetector {
+  private win: { t: number; v: number }[] = [];
+  private top: { t: number; v: number } | undefined;
+  /** Time of the newest peak, in the stream's own ms. */
+  last: number | undefined;
+  constructor(private minSwing = 0) {}
+  /** True when this sample closed a new peak (its time is `last`). */
+  push(t: number, v: number): boolean {
+    const prevT = this.win[this.win.length - 1]?.t;
+    if (prevT != null && t < prevT) this.reset(); // device rebooted or micros() wrapped
+    this.win.push({ t, v });
+    while (this.win[0].t < t - WINDOW_MS) this.win.shift();
+    let lo = Infinity, hi = -Infinity;
+    for (const x of this.win) { if (x.v < lo) lo = x.v; if (x.v > hi) hi = x.v; }
+    if (hi - lo >= this.minSwing && hi > lo && v >= lo + 0.6 * (hi - lo)) {
+      if (!this.top || v > this.top.v) this.top = { t, v };
+      return false;
+    }
+    const top = this.top;
+    this.top = undefined;
+    if (!top || (this.last != null && top.t - this.last < REFRACTORY_MS)) return false;
+    this.last = top.t;
+    return true;
+  }
+  reset() { this.win = []; this.top = undefined; this.last = undefined; }
+}
+
+/**
+ * Beats per minute from the filtered ECG: R peaks from PeakDetector, bpm = 60000 / median of the last 5 R-R intervals.
  * shortcut: threshold detector, fine for a clean filtered trace; swap for Pan-Tompkins if motion noise shows up.
  */
 export class HeartRate {
-  private win: { t: number; v: number }[] = [];
+  private det = new PeakDetector(MIN_SWING);
   private peaks: number[] = [];
+  /** Newest R peak, ESP32 ms. */
+  get lastPeak() { return this.det.last; }
   push(s: SensorSample): number | null {
     if (!s.leadsOn) { this.reset(); return null; }
-    const last = this.win[this.win.length - 1];
-    if (last && s.t < last.t) this.reset(); // ESP32 rebooted
-    this.win.push({ t: s.t, v: s.ecg });
-    if (this.win.length > WINDOW) this.win.shift();
-    const n = this.win.length;
-    if (n < 3) return this.bpm();
-    const [a, b, c] = [this.win[n - 3], this.win[n - 2], this.win[n - 1]];
-    const lo = Math.min(...this.win.map((x) => x.v)), hi = Math.max(...this.win.map((x) => x.v));
-    const isPeak = b.v > a.v && b.v >= c.v && hi - lo >= MIN_SWING && b.v >= lo + 0.6 * (hi - lo);
-    const prev = this.peaks[this.peaks.length - 1];
-    if (isPeak && (prev == null || b.t - prev >= REFRACTORY_MS)) {
-      this.peaks.push(b.t);
+    const before = this.det.last;
+    if (this.det.push(s.t, s.ecg)) {
+      if (before == null && this.peaks.length) this.peaks = []; // detector restarted: old peaks are another clock
+      this.peaks.push(this.det.last!);
       if (this.peaks.length > 6) this.peaks.shift();
     }
     return this.bpm();
@@ -112,5 +139,14 @@ export class HeartRate {
     const bpm = 60000 / rr[Math.floor(rr.length / 2)];
     return bpm >= 30 && bpm <= 220 ? Math.round(bpm) : null;
   }
-  reset() { this.win = []; this.peaks = []; }
+  reset() { this.det.reset(); this.peaks = []; }
+}
+
+/** Raw PPG from the band: "P,<micros>,<ir>", ~100 per second. */
+export interface PulseSample { tUs: number; ir: number }
+export function parsePulseLine(line: string): PulseSample | null {
+  const c = line.trim().split(',');
+  if (c.length !== 3 || c[0] !== 'P') return null;
+  const tUs = Number(c[1]), ir = Number(c[2]);
+  return Number.isFinite(tUs) && Number.isFinite(ir) && c[1] !== '' && c[2] !== '' ? { tUs, ir } : null;
 }

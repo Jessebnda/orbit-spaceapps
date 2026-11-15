@@ -1,5 +1,5 @@
 // Run: npm run check (from shared/). Asserts for the wearable CSV parser and the heart-rate estimator.
-import { HeartRate, LineBuffer, parseHeadLine, parseSensorLine, type SensorSample } from './ecg';
+import { HeartRate, LineBuffer, PeakDetector, parseHeadLine, parsePulseLine, parseSensorLine, type SensorSample } from './ecg';
 
 function check(v: boolean, m: string) { if (!v) throw new Error(m); }
 
@@ -34,10 +34,10 @@ const lb = new LineBuffer();
 check(lb.push('22146,1877,48.1,1\n22166,18').length === 1 && lb.push('85,66.0,1\n').join('|') === '22166,1885,66.0,1', 'LineBuffer joins split lines');
 
 // Synthetic filtered ECG at 50 Hz, an R wave per beat, with a small T wave and baseline wander.
-function trace(bpm: number, seconds: number, leads = true): SensorSample[] {
+function trace(bpm: number, seconds: number, leads = true, step = 20): SensorSample[] {
   const out: SensorSample[] = [];
   const period = 60000 / bpm;
-  for (let t = 0; t < seconds * 1000; t += 20) {
+  for (let t = 0; t < seconds * 1000; t += step) {
     const rt = t % period; // ms since this beat's start
     const r = rt < 70 ? 120 * (1 - Math.abs(rt - 35) / 35) : 0; // R wave ~70 ms wide, like a real QRS
     const tw = rt > 250 && rt < 400 ? 20 * Math.sin(((rt - 250) / 150) * Math.PI) : 0;
@@ -54,4 +54,15 @@ check(hr110 != null && Math.abs(hr110 - 110) <= 4, `110 bpm trace reads ${hr110}
 check(run(trace(72, 2)) === null, 'too few beats: no value yet');
 check(run(trace(72, 20, false)) === null, 'electrode off gives no heart rate');
 check(run(Array.from({ length: 500 }, (_, i) => ({ t: i * 20, ecgRaw: 2000, ecg: 1 + 0.1 * Math.sin(i), leadsOn: true }))) === null, 'a flat trace is not counted as beats');
+
+// 250 Hz firmware: time in µs, read as ms.
+check(parseSensorLine('29087312,1968,48.1,71,1,,,,,,,')?.t === 29087.312, '12-column time is µs, exposed as ms');
+const hr250 = run(trace(72, 20, true, 4));
+check(hr250 != null && Math.abs(hr250 - 72) <= 2, `72 bpm at 250 Hz reads ${hr250}`);
+// The peak lands on the highest sample, not the first one over the threshold (PTT needs the exact time).
+const pd = new PeakDetector(); let peak: number | undefined;
+for (const s of trace(60, 5, true, 4)) if (pd.push(s.t, s.ecg)) peak = pd.last;
+check(peak != null && peak % 1000 === 36, `R peak at its top sample (${peak})`);
+check(parsePulseLine('P,522301128,1078')?.tUs === 522301128 && parsePulseLine('P,522301128,1078')?.ir === 1078, 'P line parses');
+check(parsePulseLine('P,,1078') === null && parsePulseLine('S,1,22') === null && parsePulseLine('29087312,1968,nan') === null, 'bad P lines are dropped');
 console.log('ecg.check: ok');

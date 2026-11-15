@@ -36,7 +36,9 @@ function syncer(name: string, dev: BluetoothDevice) {
     if (rtt < best.rtt) best = { rtt, offset };
     console.log('[sync] recibe', name, line.trim(), `rtt=${rtt.toFixed(1)}ms offset=${offset.toFixed(1)}ms mejor_rtt=${best.rtt.toFixed(1)}ms mejor_offset=${best.offset.toFixed(1)}ms`);
   };
-  return { reply, stop: () => clearInterval(timer) };
+  // ESP ms → phone ms (performance.now), or null until a reply has come back.
+  const toPhone = () => (best.rtt < Infinity ? (espMs: number) => espMs - best.offset : null);
+  return { reply, toPhone, stop: () => clearInterval(timer) };
 }
 
 let active = false;
@@ -72,6 +74,7 @@ async function connectAll() {
           useStore.getState().setDevice(link.device, true);
           console.log('[bt] conectado', d.name, '→', link.device);
         };
+        const sync = syncer(d.name, dev);
         const decode = vitalsDecoder((m) => {
           onM(m);
           n++;
@@ -81,9 +84,8 @@ async function connectAll() {
             n = 0;
             since = Date.now();
           }
-        }, mark);
+        }, mark, sync.toPhone);
         let raw = 3;
-        const sync = syncer(d.name, dev);
         const sub = dev.onDataReceived((e) => {
           if (e.data.startsWith('S,')) return sync.reply(e.data);
           if (raw > 0 && raw--) console.log('[bt] linea', d.name, e.data);

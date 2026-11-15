@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Live filtered-ECG trace for the heart-rate chart. Kept out of the zustand store: 50 writes/s would re-render every subscriber.
-const WINDOW = 200; // 4 s at 50 Hz
+const WINDOW = 200; // 4 s at 50 Hz (the decoder thins 250 Hz chest data to 50 Hz)
 const STALE_MS = 2000;
 const FPS_MS = 66; // ~15 fps is smooth enough for a 4 s sweep
 
