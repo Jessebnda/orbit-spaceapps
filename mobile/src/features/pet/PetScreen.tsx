@@ -25,7 +25,7 @@ const THOUGHT: Record<PetMood, string> = {
 };
 /** Quiet portrait of Orbi: the character is the visual, not a decorative scene. */
 function Scene({ mood, onThought }: { mood: PetMood; onThought: () => void }) {
-  return <View style={{ backgroundColor: color.surface, borderRadius: radius.card, padding: 20, alignItems: 'center', gap: 12 }}>
+  return <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 20, alignItems: 'center', gap: 12 }}>
     <Creature size={170} mood={mood} interactive />
     <Press label={THOUGHT[mood]} hint="Abre el chat" onPress={onThought} style={{ minHeight: 44, justifyContent: 'center' }}>
       <Text style={[font('body', color.muted), { textAlign: 'center' }]}>{THOUGHT[mood]}</Text>
@@ -113,27 +113,31 @@ export function PetScreen() {
         <View style={{ gap: 12 }}>
           <Text style={font('title')}>Tu compañero Orbi</Text>
           <Text style={font('body', color.muted)}>Un espacio para hablar, hacer una pausa y seguir.</Text>
-          <Press label="Abrir chat con Orbi" onPress={() => nav.navigate('Chat')} style={{ minHeight: 50, borderRadius: radius.lg, backgroundColor: color.accent, flexDirection: 'row', gap: 8, padding: 14, alignItems: 'center', justifyContent: 'center' }}>
+          <Scene mood={mood} onThought={() => nav.navigate('Chat')} />
+          <Press label="Abrir chat con Orbi" onPress={() => nav.navigate('Chat')} style={{ minHeight: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, flexDirection: 'row', gap: 8, padding: 14, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="bubble.left.fill" size={20} color={color.onAccent} />
             <Text style={font('button', color.onAccent)}>Escribir a Orbi</Text>
           </Press>
-          <Scene mood={mood} onThought={() => nav.navigate('Chat')} />
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+        {/* Needs as labelled meters on the page ground: not three centred icon-number tiles, not another card. */}
+        <View style={{ gap: 14 }}>
           {NEEDS.map((n) => {
-            const v = needs[n.key];
-            const tint = color.muted;
+            const v = Math.max(0, Math.min(1, needs[n.key]));
             return (
-              <View key={n.key} style={{ alignItems: 'center', gap: 6 }} accessible accessibilityLabel={`${n.label} ${Math.round(v * 100)} por ciento`}>
-                <Icon name={n.icon} size={20} color={tint} />
-                <Text style={font('small', color.muted)}>{n.label}</Text>
-                <Text style={figureFont('small')}>{Math.round(v * 100)} %</Text>
+              <View key={n.key} style={{ gap: 6 }} accessible accessibilityLabel={`${n.label} ${Math.round(v * 100)} por ciento`}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Icon name={n.icon} size={15} color={color.muted} />
+                  <Text style={[font('small', color.muted), { flex: 1 }]}>{n.label}</Text>
+                  <Text style={figureFont('small')}>{Math.round(v * 100)} %</Text>
+                </View>
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: color.raised, overflow: 'hidden' }}>
+                  <View style={{ width: `${v * 100}%`, height: 4, borderRadius: 2, backgroundColor: color.accent }} />
+                </View>
               </View>
             );
           })}
         </View>
-
 
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
