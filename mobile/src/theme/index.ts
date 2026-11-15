@@ -1,4 +1,4 @@
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 import * as design from '@orbit/shared';
 
 // Tokens come from shared (design.ts, re-exported by index). Do not redefine them here; local additions below only.
@@ -19,7 +19,8 @@ export function font(k: keyof typeof type, ink: string = design.color.text): Tex
     fontSize: s.size,
     lineHeight: s.lineHeight,
     fontWeight: s.weight,
-    letterSpacing: 'letterSpacing' in s ? s.letterSpacing : undefined,
+    // SF tracking values; Roboto carries its own, and the SF numbers set it visibly tight (body) or loose (large titles).
+    letterSpacing: Platform.OS === 'ios' && 'letterSpacing' in s ? s.letterSpacing : undefined,
     color: ink,
     fontVariant: TABULAR.includes(k) ? ['tabular-nums'] : undefined,
   };
