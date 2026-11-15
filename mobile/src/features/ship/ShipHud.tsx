@@ -75,7 +75,7 @@ export function ShipHud() {
           {bad ? <StatusMark label={STATUS_LABEL[st]} tone={st} compact /> : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', ink), fontSize: 52, lineHeight: 56, flex: 1 }} numberOfLines={1}>
+          <Text maxFontSizeMultiplier={1} style={{ ...figureFont('hud', v == null ? color.faint : ink), fontSize: 52, lineHeight: 56, flex: 1 }} numberOfLines={1}>
             {v == null ? '—' : v.toFixed(METRIC_META[k].decimals)}
           </Text>
           {k === 'hr' && ecg ? <EcgTrace values={ecg} width={84} height={40} /> : <Sparkline values={values} width={84} height={40} tint={bad ? color.status[st] : color.accent} band={[THRESHOLDS[k][1], THRESHOLDS[k][2]]} />}
@@ -100,8 +100,9 @@ export function ShipHud() {
             <Text style={font('small', talking ? color.onAccent : color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
           </Press>
           {LINKS.map((l) => (
-            <View key={l.key} style={{ alignItems: 'center', gap: 2 }} accessibilityLabel={`${l.label} ${connected[l.key] ? 'conectada' : 'sin conexión'}`}>
-              <Icon name="antenna.radiowaves.left.and.right" size={18} color={connected[l.key] ? color.status.ok : color.faint} />
+            // ok grey and faint grey are near-identical, so a lost link also changes glyph and dims.
+            <View key={l.key} style={{ alignItems: 'center', gap: 2, opacity: connected[l.key] ? 1 : 0.5 }} accessibilityLabel={`${l.label} ${connected[l.key] ? 'conectada' : 'sin conexión'}`}>
+              <Icon name={connected[l.key] ? 'antenna.radiowaves.left.and.right' : 'wifi.slash'} size={18} color={connected[l.key] ? color.text : color.faint} />
               <Text style={font('small', connected[l.key] ? color.text : color.faint)}>{l.label}</Text>
             </View>
           ))}
@@ -134,10 +135,11 @@ export function ShipHud() {
               </View>
             </>
           ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <Icon name="checkmark.seal" size={32} color={color.muted} />
-              <Text style={{ ...font('body'), textAlign: 'center' }}>La nave no ha enviado nada</Text>
-              <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>{checkins.length ? 'Check-in de hoy registrado' : 'Falta el check-in de hoy'}</Text>
+            // Same top-left caption + title as a live protocol, so the panel keeps its shape instead of a centred empty state.
+            <View style={{ gap: 6 }}>
+              <Text style={font('caption', color.muted)}>Protocolos</Text>
+              <Text style={font('title')}>Sin protocolos de la nave</Text>
+              <Text style={font('body', color.muted)}>{checkins.length ? 'Check-in de hoy registrado.' : 'Falta el check-in de hoy.'}</Text>
             </View>
           )}
         </View>
