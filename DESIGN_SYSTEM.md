@@ -19,13 +19,13 @@ Revisión adversarial: la combinación de instrumentos, bitácora y parches perm
 | Divisor/pista | `#38383A` |
 | Texto principal | `#FFFFFF` |
 | Texto secundario | `#98989F` |
-| Acción/icono/foco | `#0A84FF` |
-| Enlace sobre superficies elevadas | `#64B5FF` |
-| Texto sobre acción azul | `#000000` |
-| Normal/vigilar/crítico | `#30D158` / `#FF9F0A` / `#FF453A` |
+| Acción/icono/foco | `#E8EAED` |
+| Enlace sobre superficies elevadas | `#E8EAED` |
+| Texto sobre acción | `#141518` |
+| Normal/vigilar/crítico | `#A5A7AE` / `#FF9F0A` / `#FF453A` |
 | Emergencia/SOS | `#FF3B30` |
 
-El dashboard conserva `#8E8E93` para tinta terciaria sobre fondo/superficie; evitarlo sobre elevada. No usar color solo: combinar estado con texto y forma. `accentText` es un tono de la misma familia azul. Los anillos de objetivos usan azul, `#60AFFF`, `#A0CFFF`.
+El dashboard conserva `#8E8E93` para tinta terciaria sobre fondo/superficie; evitarlo sobre elevada. No usar color solo: combinar estado con texto y forma. `accentText` comparte el blanco de interacción. Los anillos de objetivos usan `muted` uniformemente. Normal es neutro; el color queda reservado para anomalías y SOS.
 
 ## 4. Tipografía
 Fuente del sistema: San Francisco en Apple, sistema en Android/web. Es una herramienta de cabina y debe sentirse nativa.
@@ -43,7 +43,8 @@ Web: sidebar expandida en escritorio, rail en tablet y navegación en rejilla en
 Una base por plataforma: componentes nativos/RN y HTML/CSS en web. Recharts para históricos web; SVG para instrumentos y parches.
 
 - `Press`: layout en el Pressable; aspecto y animación en el hijo. Filas se tiñen; tarjetas escalan 0.98. Háptica explícita.
-- `RangeDial`: arco 270°, banda de referencia y punto de medición; no es un puntaje. Ausencia de medición = sin punto.
+- `MetricTile`: lectura compacta, unidad y tendencia o banda fina; sin diales repetidos ni cuatro estados normales.
+- `RangeDial`: solo en detalle, arco 270°, banda de referencia y punto de medición; no es un puntaje. Ausencia de medición = sin punto.
 - `Ring`: progreso de un objetivo; nunca representa directamente un vital clínico.
 - `MetricTrend`: muestras reales, selección táctil, banda y etiquetas. Histórico insuficiente = mensaje, sin curva inventada.
 - `Medal`: mismo path/glifo en ambas plataformas. Progreso local real en el móvil; el dashboard muestra los desbloqueos recibidos.
@@ -69,7 +70,7 @@ Primer frame independiente de importaciones de features. `index.js` guarda solo 
 Rendimiento: sin web fonts, geometría vectorial pequeña, separación por rutas, gráficos secundarios visibles bajo demanda, históricos limitados, medidas reservadas para SVG, animación en UI thread y sin assets fotográficos grandes. No se han medido Core Web Vitals; no atribuir cifras de LCP/CLS/INP a estas decisiones.
 
 ## 11. Accesibilidad y verificaciones
-Texto secundario `#98989F`: 7.33:1 sobre negro, 5.94:1 sobre superficie, 4.86:1 sobre elevada. Blanco: mínimo 13.94:1 sobre esas superficies. Negro sobre acción azul: 5.76:1. Glifo bronce/oro sobre campo: 10.90:1/13.57:1. Estado nunca solo color.
+Texto secundario `#98989F`: 7.33:1 sobre negro, 5.94:1 sobre superficie, 4.86:1 sobre elevada. Blanco: mínimo 13.94:1 sobre esas superficies. Texto #141518 sobre acción #E8EAED: 15.15:1. Normal #A5A7AE sobre elevada: 5.80:1. Glifo bronce/oro sobre campo: 10.90:1/13.57:1. Estado nunca solo color.
 
 Touch targets principales ≥44 pt; headers ajustados a 44. Permitir crecimiento del texto y wrap; no fijar altura en contenido largo. Web tiene foco `:focus-visible`. Medallas se acompañan de título, estado y tier en texto. Dynamic Type 200 %, VoiceOver y Reduce Transparency requieren una pasada manual; no declararlos verificados por typecheck.
 
@@ -84,3 +85,10 @@ Actualizar este archivo junto a cualquier cambio de tokens, componentes o compor
 
 ### Ajuste de interacción: juego y chat
 El juego mide su escena y reserva solo la parte de la barra nativa que la superpone: altura de `react-native-bottom-tabs`, posición de ventana y margen de 12 pt. Nave, pausa y panel de partida se posicionan respecto a ese campo visible. El acceso a la mascota se llama «Escribir a Orbi»; el globo abre chat, y la sesión guiada mantiene su propia acción. El compositor reserva la barra al cerrar el teclado, conserva Enviar visible y limita la espera de UI a 30 segundos. Las preguntas sin hub disponible no se guardan en la cola offline.
+
+### Revisión de acabado
+La estructura se conserva. Interfaz monocroma con una acción primaria blanca, secundarios grises y texto sin tintes decorativos. Orbi conserva su forma y animación, pero viste un traje claro sobre una superficie simple: sin planeta ni estrellas. Sus tres indicadores son cifras/iconos discretos, no tres anillos competidores. Diagnóstico y prueba del modelo viven en Ajustes, fuera de la conversación. Se aprovechan los controles nativos ya instalados (segmentado, fecha, sheets, navegación, símbolos); no se añadieron dependencias.
+
+Referencias primarias consultadas: [Color de Apple](https://developer.apple.com/design/human-interface-guidelines/color), [Buttons de Apple](https://developer.apple.com/design/human-interface-guidelines/buttons). La implementación de listas/tarjetas sigue siendo RN adaptado; no se presenta como UITableView nativo.
+
+Verificación de esta iteración: Release simulator compilado; capturas de Hoy/Mascota/Chat revisadas en iOS26.5 y guardadas en `docs/product/review/screenshots/`. El iPhone físico no estaba disponible. El runtime de simulador iPhone18/iOS27.2 exige adoptar UIScene antes de lanzar esta app: incompatibilidad registrada en PROBLEMS, no validación de diseño en ese runtime.

@@ -145,7 +145,7 @@ export function ask(system: string, user: string, telemetry?: string, history: P
       const c = await context();
       const completionBegan = Date.now();
       const r = await c.completion({
-        messages: telemetry == null ? [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }] : petMessages(user, telemetry, history),
+        messages: telemetry == null ? [{ role: 'system', content: system }, { role: 'user', content: `${user} /no_think` }] : petMessages(user, telemetry, history, system),
         jinja: true,
         enable_thinking: false,
         n_predict: 140,
@@ -202,7 +202,7 @@ function facts(): string {
     ? `ánimo ${last.mood}/5, estrés ${last.stress}/5${last.bereavement ? ', recibió una mala noticia familiar' : ''}`
     : 'sin check-in';
   const protocols = s.protocols.filter((p) => !s.done.includes(p.id)).map((p) => p.title);
-  const source = s.dataSource === 'sim' ? 'Datos simulados (demo); el usuario ya lo sabe. ' : '';
+  const source = s.dataSource === 'sim' ? 'Datos simulados (demo); no son mediciones de salud reales. ' : '';
   return `${source}Signos: ${vitals.join(', ') || 'sin datos'}. Último check-in: ${checkin}. Protocolos activos: ${protocols.join('; ') || 'ninguno'}.`;
 }
 

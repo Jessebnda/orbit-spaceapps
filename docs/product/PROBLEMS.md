@@ -25,3 +25,11 @@ Actualizado: 2026-11-14. Evidencia de esta sesión; no son estimaciones permanen
 
 ## Propuesta ampliada
 - [ ] 21 logros, tiers persistidos, retos compartidos y esfuerzo semanal: aún propuesta; versión actual conserva diez IDs y XP acumulado.
+
+## Revisión de acabado y roles
+- [x] Código: Hoy compacto sin cuatro diales/Normal repetidos; superficie/acciones monocromas.
+- [x] Código: mascota sin planeta/estrellas, indicadores discretos; diagnóstico del modelo fuera del chat.
+- [x] Prompt: pregunta separada de telemetría y ejemplo sin hallazgos médicos inventados. Historial excluye respuestas anteriores con confusión de rol, preservando las palabras del usuario.
+- [ ] Verificar nueva respuesta en iPhone físico: actualmente no disponible.
+- [x] Build Release de simulador y capturas revisadas en iPhone17ProMax/iOS26.5: Hoy, Mascota, Chat. Evidencia en review/screenshots/monochrome-*.png.
+- [ ] Compatibilidad con runtime iPhone18/iOS27.2: cierra antes de JavaScript, error UIKit exige UIScene. No se alteró lifecycle en este cambio visual.

@@ -3,11 +3,9 @@ import { FlatList, Keyboard, KeyboardAvoidingView, Text, TextInput, View } from 
 import { useHeaderHeight } from '@react-navigation/elements';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useTabInset } from '../../theme/useTabInset';
-import { warmModel } from '../../services/petBrain';
 import { usePetChat } from './usePetChat';
 import { useStore } from '../../store/store';
 import { color, font } from '../../theme';
-import { Icon } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { Creature } from './Creature';
 import { petMood } from '../../domain/derive';
@@ -31,15 +29,7 @@ export function ChatScreen() {
   const header = useHeaderHeight();
   const tabHeight = useTabInset();
   const [keyboard, setKeyboard] = useState(false);
-  const [localModel, setLocalModel] = useState<'checking' | 'verified' | 'missing' | 'error'>('checking');
-  const checkLocal = async () => {
-    setLocalModel('checking');
-    try {
-      const result = await warmModel();
-      setLocalModel(result.verified ? 'verified' : 'missing');
-    } catch { setLocalModel('error'); }
-  };
-  useEffect(() => { void checkLocal(); }, []);
+  const brainStatus = useStore(s => s.brain.status);
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
@@ -52,9 +42,8 @@ export function ChatScreen() {
 
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1 }}>
-      <View style={{ paddingTop: header + 8, paddingHorizontal: 16, paddingBottom: 8, gap: 4 }}>
-        <Text style={font('small', localModel === 'verified' ? color.status.ok : color.muted)}>{localModel === 'checking' ? 'Comprobando modelo en este iPhone…' : localModel === 'verified' ? 'Modelo local probado en este iPhone' : localModel === 'missing' ? 'Modelo local no descargado · chat con alternativa disponible' : 'Modelo local no disponible · chat con alternativa disponible'}</Text>
-        <Press label="Probar modelo local" onPress={() => void checkLocal()} disabled={localModel === 'checking' || busy} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={font('small', color.accentText)}>Probar modelo local</Text></Press>
+      <View style={{ paddingTop: header + 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+        <Text style={font('small', color.muted)}>{brainStatus === 'ready' ? 'Modelo local disponible' : 'Chat con respuesta alternativa'}</Text>
       </View>
       <FlatList
         ref={list}

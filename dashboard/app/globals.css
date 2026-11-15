@@ -169,14 +169,14 @@ button:not(:disabled):active {
 }
 .mac-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgb(10 132 255 / 0.5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-accent) 50%, transparent);
 }
 .mac-btn-primary {
   background: var(--t-accent);
   color: var(--t-on-accent);
 }
 .mac-btn-primary:hover:not(:disabled) {
-  background: #2b95ff;
+  background: color-mix(in srgb, var(--t-accent) 88%, black);
 }
 
 /* ---- Dashboard system (docs/product/review/dashboard.md §3) ---- */
@@ -228,7 +228,7 @@ a.card-hover:active { transform: scale(0.98); }
 .btn-lg.primary { background: var(--t-accent); color: var(--t-on-accent); }
 .btn-lg:disabled { opacity: 0.4; }
 .btn-lg:focus-visible, .field:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--t-accent); }
-@media (hover: hover) { .btn-lg:hover:not(:disabled) { background: #3a3a3c; } .btn-lg.primary:hover:not(:disabled) { background: #2b95ff; } }
+@media (hover: hover) { .btn-lg:hover:not(:disabled) { background: #3a3a3c; } .btn-lg.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--t-accent) 88%, black); } }
 .field { background: var(--t-raised); border-radius: var(--t-r-sm); color: var(--t-text); padding: 0 12px; height: 36px; width: 100%; font-size: 15px; }
 .field::placeholder { color: var(--t-text-3); }
 

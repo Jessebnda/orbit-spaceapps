@@ -1,17 +1,13 @@
 import { Text, View } from 'react-native';
-import { formatMetric, METRIC_META, statusOf, THRESHOLDS, type MetricKey } from '@orbit/shared';
+import { formatMetric, METRIC_META, rangeDial, statusOf, THRESHOLDS, type MetricKey } from '@orbit/shared';
 import { color, figureFont, font, radius, STATUS_INK, STATUS_LABEL } from '../../theme';
-import { Icon, type IconName } from './Icon';
 import { Press } from './Press';
-import { RangeDial } from './RangeDial';
 import { useEcg } from '../../services/sensors/ecgStream';
 import { EcgTrace } from './EcgTrace';
 import { Sparkline } from './Sparkline';
 import { StatusMark } from './StatusMark';
 
-const SYMBOL: Partial<Record<MetricKey, IconName>> = { hr: 'heart.fill', spo2: 'drop.fill', bpSys: 'heart.text.square', temp: 'heart.text.square' };
-
-/** Tarjeta de vital: etiqueta con símbolo, dial de 270° con el valor dentro, tendencia 24 h con banda normal y estado. Normal = quieto; solo lo anormal se tiñe. */
+/** Reading first, history second. Only readings outside the reference range use status colour. */
 export function MetricTile({ metric, value, values, width, onPress }: {
   metric: MetricKey; value: number | undefined; values: number[]; large?: boolean; width: number; onPress: () => void;
 }) {
@@ -19,22 +15,17 @@ export function MetricTile({ metric, value, values, width, onPress }: {
   const abnormal = value != null && st !== 'ok';
   const ecg = useEcg(metric === 'hr'); // live chest ECG replaces the 24 h trend while it streams
   const ink = abnormal ? STATUS_INK[st] : color.text;
-  const [wl, wh] = THRESHOLDS[metric].slice(1, 3) as [number, number];
-  const dial = Math.min(96, width - 32);
-  return (
-    <Press card label={`${meta.label}, ${formatMetric(metric, value)}, ${value == null ? 'Sin datos' : STATUS_LABEL[st]}`} onPress={onPress} style={{ width, minHeight: 188, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 16, gap: 8, borderWidth: st === 'critical' && value != null ? 1.5 : 0, borderColor: color.status.critical }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Icon name={SYMBOL[metric] ?? 'heart.text.square'} size={15} color={abnormal ? ink : color.muted} weight="semibold" />
-        <Text style={{ ...font('caption', color.muted), flexShrink: 1 }} numberOfLines={1}>{meta.label}</Text>
+  const range = rangeDial(metric, value);
+  const [low, high] = THRESHOLDS[metric].slice(1, 3);
+  return <Press card label={`${meta.label}, ${formatMetric(metric, value)}, ${value == null ? 'Sin datos' : STATUS_LABEL[st]}`} onPress={onPress} style={{ width, minHeight: 156, backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 16, gap: 12 }}>
+    <Text style={font('caption', color.muted)}>{meta.label}</Text>
+    <Text style={figureFont('figure', value == null ? color.muted : ink)}>{value == null ? '—' : value.toFixed(meta.decimals)}<Text style={font('small', color.muted)}> {meta.unit}</Text></Text>
+    {ecg ? <EcgTrace values={ecg} width={Math.max(24, width - 32)} height={24} /> : values.length > 1 ? <Sparkline values={values} width={Math.max(24, width - 32)} height={24} tint={abnormal ? ink : color.muted} /> : <View style={{ height: 24, justifyContent: 'center' }}>
+      <View style={{ height: 3, backgroundColor: color.raised, borderRadius: 2 }}>
+        <View style={{ position: 'absolute', left: `${range.normalLo * 100}%`, width: `${(range.normalHi - range.normalLo) * 100}%`, height: 3, backgroundColor: color.muted, opacity: .5 }} />
+        {range.value != null && <View style={{ position: 'absolute', left: `${range.value * 100}%`, top: -3, marginLeft: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: ink }} />}
       </View>
-      <View style={{ alignItems: 'center' }}>
-        <RangeDial metric={metric} value={value} size={dial}>
-          <Text style={{ ...figureFont('figure', value == null ? color.faint : ink), fontSize: 28 }}>{value == null ? '—' : value.toFixed(meta.decimals)}</Text>
-          <Text style={font('small', color.muted)}>{meta.unit}</Text>
-        </RangeDial>
-      </View>
-      {ecg ? <EcgTrace values={ecg} width={width - 32} height={24} /> : values.length > 1 ? <Sparkline values={values} width={width - 32} height={24} tint={abnormal ? ink : color.muted} band={[wl, wh]} /> : null}
-      {value == null ? <Text style={font('small', color.faint)}>Sin señal</Text> : <StatusMark label={STATUS_LABEL[st]} tone={st === 'ok' ? 'ok' : st} />}
-    </Press>
-  );
+    </View>}
+    {value == null ? <Text style={font('small', color.muted)}>Sin señal</Text> : abnormal ? <StatusMark label={STATUS_LABEL[st]} tone={st} /> : <Text style={font('small', color.muted)}>Ref. {low}–{metric === 'spo2' ? 100 : high}</Text>}
+  </Press>;
 }

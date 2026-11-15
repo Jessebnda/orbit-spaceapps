@@ -13,7 +13,7 @@ import { SettingsRow } from '../../components/ui/SettingsGroup';
 import { MetricTrend } from '../../components/ui/MetricTrend';
 import { EcgTrace } from '../../components/ui/EcgTrace';
 import { RangeDial } from '../../components/ui/RangeDial';
-import { useEcg } from '../../services/sensors/ecgStream';
+import { ecgIsLive, useEcg } from '../../services/sensors/ecgStream';
 import { Ring } from '../../components/ui/Ring';
 import { Card, Section } from '../../components/ui/FormSection';
 import { dayKey } from '../../domain/derive';
@@ -62,7 +62,7 @@ export function TodayScreen() {
   const day = Math.floor((Date.now() - missionStart) / 86_400_000) + 1;
   const overall = worstStatus(metrics);
   const tile = (width - 32 - space.sm) / 2;
-  const ecg = useEcg(metric === 'hr'); // live chest ECG in the heart-rate detail
+  const ecg = useEcg(metric === 'hr', Math.round(metrics.hr ?? 72)); // live chest ECG in the heart-rate detail
   const trend = (k: MetricKey) => history.map((h) => h.m[k]).filter((v): v is number => v != null);
 
   return (
@@ -92,12 +92,12 @@ export function TodayScreen() {
         <Section title="Tus objetivos de hoy">
           <Card style={{ flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap', gap: 16 }}>
             {(['activity', 'kcal', 'water'] as MetricKey[]).map((k) => <Press key={k} label={`${METRIC_META[k].label}, ${formatMetric(k, metrics[k])}`} onPress={() => setMetric(k)} style={{ alignItems: 'center', gap: 8 }}>
-              <Ring size={72} stroke={9} value={(metrics[k] ?? 0) / GOALS[k]!} mark={(THRESHOLDS[k][1] * dayProgress(Date.now())) / GOALS[k]!} tint={statusOf(k, metrics[k]) === 'ok' ? color.accent : color.status[statusOf(k, metrics[k])]}><Text style={figureFont('small')}>{metrics[k] == null ? '—' : Math.round((metrics[k]! / GOALS[k]!) * 100)}{metrics[k] != null ? '%' : ''}</Text></Ring>
+              <Ring size={56} stroke={4} value={(metrics[k] ?? 0) / GOALS[k]!} mark={(THRESHOLDS[k][1] * dayProgress(Date.now())) / GOALS[k]!} tint={color.muted}><Text style={figureFont('small')}>{metrics[k] == null ? '—' : Math.round((metrics[k]! / GOALS[k]!) * 100)}{metrics[k] != null ? '%' : ''}</Text></Ring>
               <Text style={font('caption')}>{METRIC_META[k].label}</Text>
               <Text style={font('small', color.muted)}>{formatMetric(k, metrics[k])}</Text>
             </Press>)}
           </Card>
-          <Text style={font('small', color.muted)}>La marca blanca es el avance esperado a esta hora. Metas: 120 min · 2400 kcal · 2.5 L</Text>
+          <Text style={font('small', color.muted)}>La marca indica el avance esperado a esta hora. Metas: 120 min · 2400 kcal · 2.5 L</Text>
         </Section>
 
         <FormSection title="Más métricas">
@@ -151,14 +151,15 @@ export function TodayScreen() {
           <>
             <Text style={font('caption', color.muted)}>{METRIC_META[metric].label}</Text>
             <Text style={font('display')}>{formatMetric(metric, metrics[metric])}</Text>
+            {!GOALS[metric] && <View style={{ alignItems: 'center' }}><RangeDial metric={metric} value={metrics[metric]} size={160} /></View>}
+            <StatusMark label={STATUS_LABEL[statusOf(metric, metrics[metric])]} tone={statusOf(metric, metrics[metric]) === 'ok' ? 'muted' : statusOf(metric, metrics[metric])} />
             {metric === 'hr' && ecg ? <>
               <EcgTrace values={ecg} width={width - 32} height={140} />
-              <Text style={font('small', color.muted)}>Electrocardiograma en vivo · últimos 4 s</Text>
-            </> : null}
-            {!GOALS[metric] && <View style={{ alignItems: 'center' }}><RangeDial metric={metric} value={metrics[metric]} size={180} /></View>}
-            <StatusMark label={STATUS_LABEL[statusOf(metric, metrics[metric])]} tone={statusOf(metric, metrics[metric]) === 'ok' ? 'muted' : statusOf(metric, metrics[metric])} />
-            <MetricTrend metric={metric} history={history} width={width - 32} />
-            <Text style={font('small', color.muted)}>Muestras guardadas durante las últimas 24 h.</Text>
+              <Text style={font('small', color.muted)}>{ecgIsLive() ? 'Electrocardiograma en vivo · últimos 4 s' : 'Electrocardiograma simulado · sin sensor conectado'}</Text>
+            </> : <>
+              <MetricTrend metric={metric} history={history} width={width - 32} />
+              <Text style={font('small', color.muted)}>Muestras guardadas durante las últimas 24 h.</Text>
+            </>}
             <Text style={font('section')}>Qué significa</Text>
             <Text style={font('body')}>{METRIC_META[metric].info}</Text>
             <Text style={font('section')}>Cómo se mide</Text>

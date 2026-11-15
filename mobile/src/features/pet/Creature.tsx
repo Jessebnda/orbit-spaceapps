@@ -71,9 +71,9 @@ export function Creature({ size = 200, mood = 'happy', interactive = false }: { 
     <Animated.View style={[{ width: size, height: size }, body]}>
       <Svg width={size} height={size} viewBox="0 0 200 200">
         <Ellipse cx={100} cy={188} rx={40} ry={5} fill="rgba(0,0,0,0.35)" />
-        <G rotation={-armRot} origin="40, 135"><Ellipse cx={38} cy={140} rx={9} ry={15} fill={color.accent} /></G>
-        <G rotation={armRot} origin="160, 135"><Ellipse cx={162} cy={140} rx={9} ry={15} fill={color.accent} /></G>
-        <Path d="M100 70 C150 70 165 110 160 145 C156 172 132 186 100 186 C68 186 44 172 40 145 C35 110 50 70 100 70 Z" fill={color.accent} />
+        <G rotation={-armRot} origin="40, 135"><Ellipse cx={38} cy={140} rx={9} ry={15} fill={color.text} /></G>
+        <G rotation={armRot} origin="160, 135"><Ellipse cx={162} cy={140} rx={9} ry={15} fill={color.text} /></G>
+        <Path d="M100 70 C150 70 165 110 160 145 C156 172 132 186 100 186 C68 186 44 172 40 145 C35 110 50 70 100 70 Z" fill={color.text} />
         <Path d={antenna} stroke={color.accent} strokeWidth={4} strokeLinecap="round" fill="none" />
         <Circle cx={bulb.x} cy={bulb.y} r={6} fill={BULB[mood]} />
         <Ellipse cx={100} cy={116} rx={46} ry={30} fill={VISOR} fillOpacity={0.88} />
@@ -89,7 +89,7 @@ export function Creature({ size = 200, mood = 'happy', interactive = false }: { 
         {mood === 'sad' ? <Path d="M78 100 L94 104 M122 100 L106 104" stroke={color.text} strokeWidth={2.5} strokeLinecap="round" /> : null}
         <Path d={mouth} stroke={color.text} strokeWidth={3} strokeLinecap="round" fill="none" />
         {mood === 'happy' ? (<><Ellipse cx={72} cy={128} rx={7} ry={4} fill={color.text} fillOpacity={0.12} /><Ellipse cx={128} cy={128} rx={7} ry={4} fill={color.text} fillOpacity={0.12} /></>) : null}
-        {mood === 'sad' ? <Ellipse cx={126} cy={134} rx={3} ry={5} fill={color.accent} fillOpacity={0.6} /> : null}
+        {mood === 'sad' ? <Ellipse cx={126} cy={134} rx={3} ry={5} fill={color.text} fillOpacity={0.6} /> : null}
       </Svg>
       {[0, 1, 2].map((i) => <Heart key={i} i={i} t={hearts} />)}
     </Animated.View>

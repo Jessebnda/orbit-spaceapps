@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { bleAvailable } from '../../services/sensors/ble';
-import { downloadModel } from '../../services/petBrain';
+import { downloadModel, warmModel } from '../../services/petBrain';
 import { useStore, type DataSource } from '../../store/store';
 import { alpha, color, font, radius } from '../../theme';
+import { useTabInset } from '../../theme/useTabInset';
 import { useReducedMotion } from '../../theme/useReducedMotion';
 import { Press } from '../../components/ui/Press';
 import { SegmentedTabs } from '../../components/ui/SegmentedTabs';
 import { LabeledRow, SettingsGroup, SettingsRow } from '../../components/ui/SettingsGroup';
 import { StatusMark } from '../../components/ui/StatusMark';
 
-const BRAIN: Record<string, string> = { none: 'No descargado', downloading: 'Descargando', ready: 'Listo en el teléfono', error: 'Error de descarga' };
+const BRAIN: Record<string, string> = { none: 'No descargado', downloading: 'Descargando', ready: 'Descargado', error: 'Error de descarga' };
 const input = { ...font('body'), textAlign: 'right', alignSelf: 'stretch', paddingVertical: 12 } as const;
 
 /** Ajustes (push desde Yo): grupos inset con filas etiqueta + campo. */
@@ -20,10 +22,27 @@ export function SettingsScreen() {
   const brain = useStore((s) => s.brain);
   const hubOnline = useStore((s) => s.hubOnline);
   const reduced = useReducedMotion();
+  const tabInset = useTabInset();
+  const [probe, setProbe] = useState<'idle' | 'running' | 'verified' | 'missing' | 'error'>('idle');
+  const testModel = async () => {
+    if (probe === 'running') return;
+    setProbe('running');
+    try {
+      const result = await warmModel();
+      setProbe(result.verified ? 'verified' : 'missing');
+    } catch { setProbe('error'); }
+  };
+  const probeText = {
+    idle: 'La prueba carga el modelo y genera una respuesta breve en este dispositivo, sin añadirla al chat.',
+    running: 'Cargando el modelo y comprobando la inferencia local…',
+    verified: 'Modelo cargado y prueba de inferencia local completada en este dispositivo.',
+    missing: 'No se encontró el modelo en este dispositivo. Descárgalo para probarlo.',
+    error: 'No se pudo completar la prueba local. El chat puede utilizar su alternativa; puedes reintentar la prueba.',
+  }[probe];
   const { setProfile, setHubUrl, setDataSource } = useStore.getState();
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 32 }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: tabInset + 32 }}>
       <View style={{ paddingHorizontal: 16, gap: 24 }}>
         <SettingsGroup title="Tripulante">
           <LabeledRow label="Nombre"><TextInput value={profile.name} onChangeText={(v) => setProfile({ name: v })} style={input} returnKeyType="done" /></LabeledRow>
@@ -46,26 +65,34 @@ export function SettingsScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Mascota" hint="Orbi funciona sin conexión cuando está descargado.">
-          <SettingsRow last={brain.status !== 'none' && brain.status !== 'downloading' && brain.status !== 'error'}>
+          <SettingsRow>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={font('body')}>Cerebro de Orbi</Text>
               <StatusMark label={BRAIN[brain.status]} tone={brain.status === 'error' ? 'critical' : brain.status === 'ready' ? 'ok' : 'muted'} />
             </View>
           </SettingsRow>
           {brain.status === 'downloading' ? (
-            <SettingsRow last>
+            <SettingsRow>
               <View style={{ height: 4, borderRadius: 2, backgroundColor: color.raised, overflow: 'hidden' }}>
                 <View style={{ height: 4, width: `${Math.round(brain.progress * 100)}%`, backgroundColor: color.accent }} />
               </View>
               <Text style={font('small', color.muted)}>{Math.round(brain.progress * 100)} %</Text>
             </SettingsRow>
           ) : brain.status !== 'ready' ? (
-            <SettingsRow last>
+            <SettingsRow>
               <Press label="Descargar cerebro de Orbi" onPress={() => void downloadModel()} style={{ height: 44, borderRadius: radius.md, borderCurve: 'continuous', backgroundColor: alpha(color.accent, 0.18), alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={font('button', color.accentText)}>Descargar</Text>
               </Press>
             </SettingsRow>
           ) : null}
+          <SettingsRow last>
+            <View style={{ gap: 8 }}>
+              <Press label="Probar modelo local" onPress={() => void testModel()} disabled={probe === 'running' || brain.status === 'downloading'} style={{ minHeight: 44, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: color.raised, justifyContent: 'center' }}>
+                <Text style={font('button', color.accentText)}>{probe === 'running' ? 'Comprobando modelo…' : 'Probar modelo local'}</Text>
+              </Press>
+              <Text accessibilityLiveRegion="polite" style={font('small', probe === 'error' ? color.status.watch : color.muted)}>{probeText}</Text>
+            </View>
+          </SettingsRow>
         </SettingsGroup>
 
         <SettingsGroup title="Accesibilidad">

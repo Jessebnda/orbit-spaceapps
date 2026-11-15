@@ -26,8 +26,10 @@ export function parseSensorLine(line: string): SensorSample | null {
   const c = line.trim().split(',');
   if (c.length !== 11) return null; // other wearables send other column counts (see parseHeadLine)
   const [t, ecgRaw, ecg, leads] = [num(c[0]), num(c[1]), num(c[2]), num(c[3])];
-  if (t == null || ecgRaw == null || ecg == null || leads == null || ![t, ecgRaw, ecg].every(Number.isFinite)) return null;
-  const out: SensorSample = { t, ecgRaw, ecg, leadsOn: leads === 1 };
+  if (t == null || ecgRaw == null || leads == null || ![t, ecgRaw].every(Number.isFinite)) return null;
+  // Electrodes off: the firmware sends "nan" for the filtered ECG. Keep the line for IMU/temp, mark the ECG unusable.
+  const ecgOk = ecg != null && Number.isFinite(ecg);
+  const out: SensorSample = { t, ecgRaw, ecg: ecgOk ? ecg : 0, leadsOn: leads === 1 && ecgOk };
   const v = c.slice(4, 11).map(num);
   if (v.length === 7 && v.every((x) => x != null && Number.isFinite(x))) {
     out.angle = { x: v[0]!, y: v[1]!, z: v[2]! };
