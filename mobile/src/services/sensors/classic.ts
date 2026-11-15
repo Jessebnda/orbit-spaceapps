@@ -6,7 +6,7 @@ import { vitalsDecoder } from './decoder';
 
 // Classic Bluetooth (SPP / BluetoothSerial) for wearables already paired in Android settings.
 // shortcut: Android only, iOS has no SPP; move the firmware to BLE (firmware/esp32_orbit/orbit_ble_csv.h) for iPhone.
-const WEARABLE = /^(ORB-|ESP32)/i;
+const WEARABLE = /^(ORB-|ESP)/i; // ESP32_Sensores, ESP Banda, ...
 const NOT_WEARABLE = /robot/i; // other ESP32 projects paired to the same phone
 const RETRY_MS = 5000;
 
