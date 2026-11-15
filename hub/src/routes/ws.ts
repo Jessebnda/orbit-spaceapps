@@ -26,6 +26,7 @@ const judge = (crewId: string, now: number) => execute(decide(snapshotOf(crewId,
 
 /** At most one vitals row per crew per 10 s. */
 const DB_VITALS_EVERY_MS = 10_000;
+const METRIC_STALE_MS = 60_000;
 
 export function onConnection(ws: WebSocket) {
   let crewId: string | undefined;
@@ -48,7 +49,11 @@ export function onConnection(ws: WebSocket) {
         }
         case 'vitals': {
           const c = crews.get(msg.crewId); if (!c) return;
-          Object.assign(c.snap.metrics, cleanMetrics(msg.metrics));
+          const fresh = cleanMetrics(msg.metrics);
+          Object.assign(c.snap.metrics, fresh);
+          for (const k of Object.keys(fresh)) c.seenAt[k] = now;
+          // A sensor that stopped reporting must not leave its last value on the monitor.
+          for (const k of Object.keys(c.snap.metrics)) if (now - (c.seenAt[k] ?? 0) > METRIC_STALE_MS) delete c.snap.metrics[k as keyof typeof c.snap.metrics];
           c.snap.status = worstStatus(c.snap.metrics);
           c.snap.lastSeen = now;
           const metrics = { ...c.snap.metrics };

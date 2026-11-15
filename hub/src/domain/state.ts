@@ -10,7 +10,7 @@ export const RING_MAX = 2000;   // vitals samples per crew (about 66 min at 2 s)
 export const STAT_MAX = 5000;
 export const EMERGENCY_MAX = 200;
 
-export interface Crew { snap: CrewSnapshot; ws?: WebSocket; ring: { ts: number; metrics: Metrics }[]; lastDbVitals: number }
+export interface Crew { snap: CrewSnapshot; ws?: WebSocket; ring: { ts: number; metrics: Metrics }[]; lastDbVitals: number; seenAt: Record<string, number> }
 
 export const crews = new Map<string, Crew>();
 export const captains = new Set<WebSocket>();
@@ -41,7 +41,7 @@ export function newCrew(member: CrewMember, now: number): Crew {
       comms: { todayMin: 0, byPeer: {}, anomalies: [] },
       stats: { petMin: 0, gameMin: 0, activityMin: 0, xp: 0, achievements: [] },
     },
-    ring: [], lastDbVitals: 0,
+    ring: [], lastDbVitals: 0, seenAt: {},
   };
 }
 
