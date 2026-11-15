@@ -24,7 +24,7 @@ const num = (s: string | undefined) => (s == null || s.trim() === '' ? undefined
 /** Null for blank lines, headers, truncated lines and anything non-numeric (BLE can cut a line in half). */
 export function parseSensorLine(line: string): SensorSample | null {
   const c = line.trim().split(',');
-  if (c.length < 4) return null;
+  if (c.length !== 11) return null; // other wearables send other column counts (see parseHeadLine)
   const [t, ecgRaw, ecg, leads] = [num(c[0]), num(c[1]), num(c[2]), num(c[3])];
   if (t == null || ecgRaw == null || ecg == null || leads == null || ![t, ecgRaw, ecg].every(Number.isFinite)) return null;
   const out: SensorSample = { t, ecgRaw, ecg, leadsOn: leads === 1 };
@@ -35,6 +35,29 @@ export function parseSensorLine(line: string): SensorSample | null {
     out.temp = v[6]!;
   }
   return out;
+}
+
+// Head band: AccelX,AccelY,AccelZ,GradosX,GradosY,GradosZ,BPM,SpO2 (its own PPG computes BPM and SpO2).
+export interface HeadSample {
+  accel: { x: number; y: number; z: number };
+  angle: { x: number; y: number; z: number };
+  /** Undefined while the sensor has no reading (the firmware sends 0). */
+  bpm?: number;
+  spo2?: number;
+}
+
+export function parseHeadLine(line: string): HeadSample | null {
+  const c = line.trim().split(',');
+  if (c.length !== 8) return null;
+  const v = c.map(num);
+  if (!v.every((x) => x != null && Number.isFinite(x))) return null;
+  const [ax, ay, az, gx, gy, gz, bpm, spo2] = v as number[];
+  return {
+    accel: { x: ax, y: ay, z: az },
+    angle: { x: gx, y: gy, z: gz },
+    bpm: bpm >= 30 && bpm <= 220 ? bpm : undefined,
+    spo2: spo2 >= 70 && spo2 <= 100 ? spo2 : undefined,
+  };
 }
 
 /** BLE notifies in small chunks, so a line can arrive split. Feed chunks, get whole lines back. */

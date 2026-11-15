@@ -1,5 +1,5 @@
 // Run: npm run check (from shared/). Asserts for the wearable CSV parser and the heart-rate estimator.
-import { HeartRate, LineBuffer, parseSensorLine, type SensorSample } from './ecg';
+import { HeartRate, LineBuffer, parseHeadLine, parseSensorLine, type SensorSample } from './ecg';
 
 function check(v: boolean, m: string) { if (!v) throw new Error(m); }
 
@@ -10,6 +10,14 @@ const ecgOnly = parseSensorLine('22166,1885,66.0,1,,,,,,,');
 check(ecgOnly?.ecg === 66 && ecgOnly.temp === undefined && ecgOnly.accel === undefined, 'ECG-only line has no IMU or temperature');
 check(parseSensorLine('22166,1885,66.0,0,,,,,,,')?.leadsOn === false, 'leads 0 = electrode off');
 check(parseSensorLine('') === null && parseSensorLine('t,ecg') === null && parseSensorLine('22146,18') === null && parseSensorLine('a,b,c,d') === null, 'blank, header, truncated and non-numeric lines are dropped');
+
+// Head band line: 8 columns, BPM and SpO2 from its own sensor; 0 means no reading.
+const head = parseHeadLine('0.12,-0.40,9.79,1.5,-2.0,30.1,74,97');
+check(head?.bpm === 74 && head.spo2 === 97 && head.accel.z === 9.79 && head.angle.z === 30.1, 'head line parses');
+const noFinger = parseHeadLine('0.12,-0.40,9.79,1.5,-2.0,30.1,0,0');
+check(noFinger != null && noFinger.bpm === undefined && noFinger.spo2 === undefined, 'head 0 BPM/SpO2 = no reading');
+check(parseHeadLine('AccelX,AccelY,AccelZ,GradosX,GradosY,GradosZ,BPM,SpO2') === null, 'head header dropped');
+check(parseSensorLine('0.12,-0.40,9.79,1.5,-2.0,30.1,74,97') === null && parseHeadLine('22146,1877,48.1,1,-2.58,-0.60,0.01,0.081,-0.408,8.970,24.39') === null, 'formats never mix');
 
 // A line cut in two by BLE is reassembled.
 const lb = new LineBuffer();

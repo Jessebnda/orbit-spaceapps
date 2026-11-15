@@ -3,7 +3,7 @@
 import type { Status } from './index'; // type-only: no runtime cycle
 
 /** iOS dark system colours (systemGreen/Orange/Red). Always paired with STATUS_LABEL text or a StatusMark. */
-export const STATUS_COLOR: Record<Status, string> = { ok: '#30D158', watch: '#FF9F0A', critical: '#FF453A' };
+export const STATUS_COLOR: Record<Status, string> = { ok: '#A5A7AE', watch: '#FF9F0A', critical: '#FF453A' };
 
 /** Apple dark-mode semantic colours, opaque so they composite the same in RN and CSS. */
 export const color = {
@@ -14,9 +14,9 @@ export const color = {
   text: '#FFFFFF',        // label
   muted: '#98989F',       // secondaryLabel
   faint: '#98989F',       // supporting text, AA on both surface and raised backgrounds
-  accent: '#0A84FF',
-  accentText: '#64B5FF', // same blue family, AA for links on raised surfaces      // systemBlue: the ONE non-status colour (tint)
-  onAccent: '#000000',
+  accent: '#E8EAED',
+  accentText: '#E8EAED', // monochrome interaction; color reserved for alerts
+  onAccent: '#141518',
   emergency: '#FF3B30',   // systemRed (light variant), reserved for active emergencies and SOS
   status: STATUS_COLOR,
 } as const;
