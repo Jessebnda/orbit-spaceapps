@@ -24,6 +24,8 @@ const num = (s: string | undefined) => (s == null || s.trim() === '' ? undefined
 /** Null for blank lines, headers, truncated lines and anything non-numeric (BLE can cut a line in half). */
 export function parseSensorLine(line: string): SensorSample | null {
   const c = line.trim().split(',');
+  // Newer firmware adds its own bpm as column 4; the app computes pulse from the ECG itself, so drop it.
+  if (c.length === 12) c.splice(3, 1);
   if (c.length !== 11) return null; // other wearables send other column counts (see parseHeadLine)
   const [t, ecgRaw, ecg, leads] = [num(c[0]), num(c[1]), num(c[2]), num(c[3])];
   if (t == null || ecgRaw == null || leads == null || ![t, ecgRaw].every(Number.isFinite)) return null;

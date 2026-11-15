@@ -19,6 +19,9 @@ check(noFinger != null && noFinger.bpm === undefined && noFinger.spo2 === undefi
 check(parseHeadLine('AccelX,AccelY,AccelZ,GradosX,GradosY,GradosZ,BPM,SpO2') === null, 'head header dropped');
 check(parseSensorLine('0.12,-0.40,9.79,1.5,-2.0,30.1,74,97') === null && parseHeadLine('22146,1877,48.1,1,-2.58,-0.60,0.01,0.081,-0.408,8.970,24.39') === null, 'formats never mix');
 
+const v12 = parseSensorLine('22146,1877,48.1,72,1,-2.58,-0.60,0.01,0.081,-0.408,8.970,24.39');
+check(v12?.leadsOn === true && v12.ecg === 48.1 && v12.temp === 24.39, '12-column firmware (with its bpm) parses like the 11-column one');
+check(parseSensorLine('8501,1734,nan,nan,0,,,,,,,')?.leadsOn === false, '12-column line with electrodes off is kept');
 const off = parseSensorLine('2806145,1859,nan,0,-2.1,-0.9,-32.7,0.17,-0.29,8.97,24.2');
 check(off != null && !off.leadsOn && off.temp === 24.2, 'nan ECG (electrodes off) still yields temperature');
 
