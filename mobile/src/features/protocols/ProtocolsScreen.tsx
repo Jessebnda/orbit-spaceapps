@@ -67,7 +67,8 @@ export function ProtocolsScreen() {
         <SegmentedTabs tabs={KINDS.map((k) => ({ key: k, label: PROTOCOL_KIND_LABEL[k] }))} active={kind} onChange={setKind} />
 
         {list.length === 0 ? (
-          <EmptyState icon="checkmark.seal" title="Todo al día" hint="La nave no te ha pedido nada en esta categoría." />
+          // Quiet one-liner: a big centred empty state here contradicted the pending card just above it.
+          <Text style={[font('body', color.muted), { paddingHorizontal: 16 }]}>{urgent?.kind === kind ? 'Nada más pendiente en esta categoría.' : `Sin protocolos de ${PROTOCOL_KIND_LABEL[kind].toLowerCase()} por ahora.`}</Text>
         ) : (
           <FormSection>
             {list.map((p, i) => (
