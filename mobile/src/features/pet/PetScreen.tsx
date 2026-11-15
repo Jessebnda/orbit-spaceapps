@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import Svg, { Circle } from 'react-native-svg';
 import { sendStat } from '../../services/hub';
 import { useStore } from '../../store/store';
@@ -82,11 +82,28 @@ export function PetScreen() {
     useStore.getState().addSession({ id, ts: Date.now(), done: false });
     useStore.getState().setActiveSession(id);
   };
-  const schedule = () => {
-    useStore.getState().addSession({ id: `s${when.getTime()}`, ts: when.getTime(), done: false });
+  const schedule = (at: Date = when) => {
+    useStore.getState().addSession({ id: `s${at.getTime()}`, ts: at.getTime(), done: false });
     useStore.getState().showToast('Sesión programada');
     setPicking(false);
   };
+  // Android has no 'datetime' picker (the inline component rendered nothing): two native dialogs in a row, date then time.
+  const pickOnAndroid = () => DateTimePickerAndroid.open({
+    value: when, mode: 'date', minimumDate: new Date(),
+    onChange: (e, day) => {
+      if (e.type !== 'set' || !day) return;
+      DateTimePickerAndroid.open({
+        value: day, mode: 'time', is24Hour: true,
+        onChange: (e2, time) => {
+          if (e2.type !== 'set' || !time) return;
+          const at = new Date(day);
+          at.setHours(time.getHours(), time.getMinutes(), 0, 0);
+          setWhen(at);
+          schedule(at);
+        },
+      });
+    },
+  });
   const upcoming = sessions.filter((s) => !s.done).sort((a, b) => a.ts - b.ts);
   const rel = (ts: number) => {
     const m = Math.round((ts - Date.now()) / 60000);
@@ -139,14 +156,14 @@ export function PetScreen() {
             <Press label="Empezar ahora" haptic="light" onPress={startNow} style={{ flex: 1, height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: alpha(color.accent, 0.18), alignItems: 'center', justifyContent: 'center' }}>
               <Text style={font('button', color.accentText)}>Ahora</Text>
             </Press>
-            <Press label="Programar sesión" onPress={() => setPicking((p) => !p)} style={{ flex: 1, height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.raised, alignItems: 'center', justifyContent: 'center' }}>
+            <Press label="Programar sesión" onPress={() => (Platform.OS === 'android' ? pickOnAndroid() : setPicking((p) => !p))} style={{ flex: 1, height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.raised, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={font('button', color.accentText)}>Programar</Text>
             </Press>
           </View>
-          {picking ? (
+          {picking && Platform.OS === 'ios' ? (
             <View style={{ gap: 8 }}>
               <DateTimePicker value={when} mode="datetime" display={Platform.OS === 'ios' ? 'compact' : 'default'} minimumDate={new Date()} themeVariant="dark" onChange={(_, d) => d && setWhen(d)} style={{ alignSelf: 'flex-start' }} />
-              <Press label="Guardar sesión" haptic="success" onPress={schedule} style={{ height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Press label="Guardar sesión" haptic="success" onPress={() => schedule()} style={{ height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={font('button', color.onAccent)}>Guardar</Text>
               </Press>
             </View>
