@@ -16,7 +16,7 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 
 | Layer | What it does | Where |
 |---|---|---|
-| **Wearables** | ESP32 chest vest (ECG, heart rate, IMU, skin temperature, LED status light), wrist band (heart rate, IMU), head band (camera) | [`firmware/`](firmware) |
+| **Wearables** | ESP32 chest vest (ECG, heart rate, IMU, skin temperature, LED status light), wrist band (heart rate, IMU), head band (camera) | [`firmware/`](firmware), 3D-printed enclosures designed for microgravity in [`hardware/`](hardware) |
 | **Crew app** | Today view, vitals and trends, daily protocols (physical test, reaction game), SOS with CPR guide, an on-device companion pet ("Orbi") that turns habits into a game, leaderboard and explorations | [`mobile/`](mobile) (Expo, iOS, Android and web) |
 | **Mission hub** | Validates every reading, applies thresholds, detects emergencies, logs check-ins and prescribes protocols per astronaut | [`hub/`](hub) (Node, runs on the commander's laptop) |
 | **Commander dashboard** | Live crew board, per-astronaut detail, proximity graph, protocols, crew album, and an AI assistant that cites NASA sources and shows its reasoning live | [`dashboard/`](dashboard) (Next.js) |
@@ -77,6 +77,7 @@ The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds w
 
 - **Working:** vest streaming 250 Hz ECG, heart rate and IMU to the phone over Bluetooth, chest LED light painted in the astronaut's pet colour that pulses with each heartbeat and turns red as heart rate rises, crew app on iOS, Android and web, hub, dashboard, on-board assistant with NASA sources, SOS flow, daily protocols.
 - **Simulated in the demo:** blood pressure, temperature (when the sensor is missing), water and sleep. These are clearly generated values for demonstration, not readings.
+- **Enclosures** are PLA prototypes. A flight version would use flame-retardant, low off-gassing materials such as ULTEM 9085 or PEEK ([details](hardware/README.md#design-for-spaceflight)).
 - **Not measured by wearables:** glucose, EEG, bone and muscle loss. The hub prescribes a check on the ship's dedicated equipment instead.
 - **Thresholds** are generic adult clinical ranges for now (`shared/src/index.ts`); the next step is to align them with NASA-STD-3001.
 - **Planned:** ESP-NOW body network with LoRa repeaters across the habitat, a radiation dose sensor, and a 3D crew status view.
