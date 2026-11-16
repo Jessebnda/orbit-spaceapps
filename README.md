@@ -153,7 +153,7 @@ Long missions are monotonous, and exercise is a countermeasure astronauts must k
 
 A crew far from Earth cannot call a cloud model, and medical data should never leave the ship. So the commander's assistant runs a large model entirely on the mission laptop (a MacBook Pro M5 Pro with 24 GB of RAM).
 
-**The model.** Qwen3.8 Flash Next, a mixture-of-experts (MoE) model, quantized to IQ4_XS: about 92 GB on disk, roughly four times the laptop's memory. Each token only activates a few experts, so the whole model never needs to be in RAM at once.
+**The model.** Qwen3.8 Flash Next, a mixture-of-experts (MoE) model, quantized to IQ4_XS: about 92 GB on disk, roughly four times the laptop's memory. Each token only activates a few experts, so the whole model never needs to be in RAM at once. The model was used **only locally**: open weights downloaded once and run on our own laptop, with no API, no account and no data sent anywhere.
 
 **The llama.cpp fork.** We serve it with a fork of llama.cpp ([npanj/llama.cpp](https://github.com/npanj/llama.cpp)) that adds expert streaming (`--moe-stream`):
 
