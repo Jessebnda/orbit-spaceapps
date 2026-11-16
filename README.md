@@ -47,6 +47,8 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 
 <p align="center"><img src="docs/media/cad-vest.png" alt="Chest vest enclosure assembly" width="430"> <img src="docs/media/cad-wrist.png" alt="Wrist phone mount assembly" width="430"></p>
 
+<p align="center"><img src="docs/media/wrist-electronics.jpg" alt="Wrist band electronics: XIAO ESP32-C3 and MPU6050 motion sensor wired inside the 3D-printed box" width="300"></p>
+
 | Device | Inside | CAD |
 |---|---|---|
 | **Chest vest** | ESP32, ECG front end (250 Hz), MPU6050 motion sensor, GY-906 skin temperature, WS2812 LED ring behind a translucent logo disc | [3D view](hardware/vest/PecheraAssem.glb) · [STL](hardware/vest/stl) · [STEP](hardware/vest/step) |
@@ -259,7 +261,7 @@ npm run mobile     # crew app (Expo)
 npm run check      # contract self-checks
 ```
 
-The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds with `arduino-cli` for `esp32:esp32:esp32` (vest) and the XIAO ESP32-C3 (head band).
+The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds with `arduino-cli` for `esp32:esp32:esp32` (vest) and the XIAO ESP32-C3 (wrist band).
 
 ## Status and limits
 
