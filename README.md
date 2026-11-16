@@ -275,7 +275,7 @@ npm run mobile     # crew app (Expo)
 npm run check      # contract self-checks
 ```
 
-The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds with `arduino-cli` for `esp32:esp32:esp32` (vest) and the XIAO ESP32-C3 (wrist band).
+The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds with `arduino-cli` for `esp32:esp32:esp32` (vest) and the XIAO ESP32-C3 (wrist band and head band).
 
 ## Repository structure
 
