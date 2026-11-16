@@ -14,6 +14,8 @@ ORBIT is a wearable and software system that lets a crew watch its own physical 
 
 <p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, head band camera, wrist band and wrist phone" width="560"></p>
 
+> 📄 **Read the technical paper:** [ORBIT paper](docs/ORBIT-paper.md) ([.docx](docs/ORBIT-paper.docx)), written in Spanish, the team's language. It covers the challenge, the two-layer architecture, the hardware design, three use cases (routine monitoring, risk prediction and SOS) and its references. This README is the full English version of the project.
+
 ## High-level summary
 
 ORBIT is a health monitor that a crew wears and runs on board, with no link to Earth. A smart vest, a wrist band and a head camera stream vitals to each astronaut's wrist phone. The phone turns those readings into a simple daily picture, and a companion pet named Orbi turns healthy habits into a game. A laptop on board collects the whole crew's data, raises emergencies and prescribes protocols, and it gives the commander an AI assistant that answers from NASA research. It addresses the challenge because the crew can catch a slow decline in heart health, sleep, exercise or mood themselves, before it becomes an emergency, even when Earth is minutes away.
