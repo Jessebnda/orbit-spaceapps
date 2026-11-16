@@ -63,10 +63,46 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
                                                                                      local LLM (llama.cpp) ◄────┘
 ```
 
-- **No internet needed.** Every model runs on board: a small Qwen3 model on the phone, a larger Qwen model on the mission laptop through llama.cpp.
+- **No internet needed.** Every model runs on board: a small model on the phone and a 92 GB model on the mission laptop (see below).
 - **Store and forward.** If the network drops, the phone queues up to 500 messages and sends them when it reconnects.
 - **Emergencies both ways.** The astronaut can trigger SOS from the wrist, or the hub raises one from the vitals. The dashboard and every phone show it, and the phone walks the crew through CPR adapted for microgravity.
 - **Behavioral health, not just vitals.** Daily check-ins, reaction tests, team interaction (proximity between crew phones) and news from home feed the risk picture, following NASA's Human Research Program behavioral risk.
+
+### On-board AI: a 92 GB model on a 24 GB laptop
+
+A crew far from Earth cannot call a cloud model, and medical data should never leave the ship. So the commander's assistant runs a large model entirely on the mission laptop (a MacBook Pro M5 Pro with 24 GB of RAM).
+
+**The model.** Qwen3.8 Flash Next, a mixture-of-experts (MoE) model, quantized to IQ4_XS: about 92 GB on disk, roughly four times the laptop's memory. Each token only activates a few experts, so the whole model never needs to be in RAM at once.
+
+**The llama.cpp fork.** We serve it with a fork of llama.cpp ([npanj/llama.cpp](https://github.com/npanj/llama.cpp)) that adds expert streaming (`--moe-stream`):
+
+| Piece | Setting | Why |
+|---|---|---|
+| Expert streaming | `--moe-stream --moe-stream-direct` | Experts are read from the SSD on demand instead of loading the full 92 GB |
+| Expert cache | `--moe-stream-cache 9` (9 GB), 8 I/O threads, look-ahead prefetch | Hot experts stay in RAM; the next ones are fetched while the current token computes |
+| KV cache | `-ctk q8_0 -ctv q8_0`, flash attention, 16k context | Long conversations fit next to everything else |
+| GPU | `-ngl 99` (Apple Metal) | All dense layers on the GPU |
+| Sleep | `--sleep-idle-seconds 300` | The model unloads after 5 minutes idle (about 12 to 15 GB active, near zero asleep) and wakes on the next question |
+
+The launch script is [`hub/scripts/llm.sh`](hub/scripts/llm.sh). It serves an OpenAI-compatible API on `localhost:8080` with no network access and no computer-control tools. Generation runs at about 9 tokens per second, so the hub streams the model's thinking to the dashboard as it arrives instead of leaving the commander staring at a spinner.
+
+**Tools.** The assistant ([`hub/src/services/agent.ts`](hub/src/services/agent.ts)) is a tool-calling agent. Each question runs up to 4 rounds: the model thinks, calls tools, reads the results and answers; the last round has no tools, so it must answer with what it gathered. Its tools:
+
+| Tool | What it does |
+|---|---|
+| `get_crew_overview` | Live vitals, status and last contact for every crew member |
+| `get_member_history` | One astronaut's trends over time |
+| `get_comms` | Who has been near whom (team contact and isolation) |
+| `search_knowledge` | Retrieval over the NASA knowledge base (below) |
+| `list_protocols` | The protocol library |
+| `trigger_protocol` | Sends a protocol to an astronaut's phone, with a reason |
+| `create_protocol` | Writes a new protocol (mental, physical or emergency) and sends it |
+
+Every tool call and its result are shown under the answer, so the commander can check what the model actually looked at.
+
+**Retrieval (RAG).** The NASA documents in [`hub/kb/`](hub/kb) are split into ~800-character chunks with overlap ([`hub/src/services/rag.ts`](hub/src/services/rag.ts)), embedded with `multilingual-e5-small` (about 120 MB, runs in Node through transformers.js) and stored in PostgreSQL with pgvector. A question is embedded the same way and the closest chunks come back with their source, which the model cites. If the database is down, the hub keeps the same index in memory and ranks by cosine similarity, so retrieval still works. Run `npm run ingest` in `hub/` after adding a document.
+
+**On the phone.** The companion pet uses a separate 1-bit Bonsai-4B model (about 570 MB) through llama.rn, so it works with no network at all and is released from memory after 2 minutes idle.
 
 More detail: [Technical paper (Spanish)](docs/ORBIT-paper.md) ([.docx](docs/ORBIT-paper.docx)) · [Architecture](docs/ARCHITECTURE.md) · [Conventions](docs/CONVENTIONS.md) · [Design brief](docs/product/DESIGN-BRIEF.md)
 
@@ -114,7 +150,7 @@ Next we want to align thresholds with NASA-STD-3001, move the body network to ES
 
 ## Tools
 
-TypeScript across the stack · React Native with Expo (iOS, Android, web) · Next.js and Tailwind (dashboard) · Node with WebSockets (hub) · PostgreSQL with pgvector, optional Supabase · llama.cpp with Qwen models (on-board AI), llama.rn on the phone · ESP32 and XIAO ESP32-C3 with Arduino (ECG module, MPU6050, GY-906, WS2812 LEDs) · SolidWorks enclosures (STL and STEP), 3D printed in PLA.
+TypeScript across the stack · React Native with Expo (iOS, Android, web) · Next.js and Tailwind (dashboard) · Node with WebSockets (hub) · PostgreSQL with pgvector, optional Supabase · llama.cpp fork with MoE expert streaming and Qwen3.8 Flash Next (on-board AI), transformers.js embeddings, llama.rn with Bonsai-4B on the phone · ESP32 and XIAO ESP32-C3 with Arduino (ECG module, MPU6050, GY-906, WS2812 LEDs) · SolidWorks enclosures (STL and STEP), 3D printed in PLA.
 
 ## Run it
 
@@ -140,7 +176,7 @@ The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds w
 
 ## Use of AI
 
-- **In the product:** a small Qwen3 model runs on the phone for the companion pet. A Qwen model served by llama.cpp powers the commander's assistant, which uses retrieval over the NASA knowledge base and tools to read crew data.
+- **In the product:** a 1-bit Bonsai-4B model runs on the phone for the companion pet. Qwen3.8 Flash Next, served by a llama.cpp fork, powers the commander's assistant, which uses retrieval over the NASA knowledge base and tools to read crew data.
 - **In development:** the team used an AI coding assistant (Claude Code) to help write and review code across the repository. The idea, the hardware and all design decisions are the team's own. No AI-generated images or NASA branding are used.
 
 ## Team
