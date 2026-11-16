@@ -10,7 +10,7 @@ ORBIT is a wearable and software system that lets a crew watch its own physical 
 
 **Quick links:** [Demo video](docs/media/orbit-demo.mp4) · [Technical paper (ES, .md)](docs/ORBIT-paper.md) · [Paper (.docx)](docs/ORBIT-paper.docx) · [Features](#features) · [On-board AI](#on-board-ai-a-92-gb-model-on-a-24-gb-laptop) · [NASA data](#nasa-data-and-resources) · [Hardware and CAD](#hardware-and-cad) · [Firmware](firmware) · [Run it](#run-it) · [Status and limits](#status-and-limits)
 
-<p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, wrist band and wrist phone" width="560"></p>
+<p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, head band camera, wrist band and wrist phone" width="560"></p>
 
 ## High-level summary
 
@@ -33,7 +33,7 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 
 | Part | What it does | Where |
 |---|---|---|
-| **Wearables** | ESP32 chest vest (ECG at 250 Hz, heart rate, motion, skin temperature, LED light), wrist band (heart rate, motion), head band (camera that sends photos to the crew album) | [`firmware/`](firmware), 3D-printed enclosures designed for microgravity in [`hardware/`](hardware) |
+| **Wearables** | ESP32 chest vest (ECG at 250 Hz, heart rate, motion, skin temperature, LED light), wrist band (heart rate, motion), head band (ESP32 camera on the forehead that takes photos hands-free while the phone is busy in ship mode, worn in the team photo) | [`firmware/`](firmware), 3D-printed enclosures designed for microgravity in [`hardware/`](hardware) |
 | **Crew app** | Today, check-in, daily tests, Orbi the companion pet, achievements, leaderboard and explorations, crew album, ship mode, SOS with CPR guide | [`mobile/`](mobile) (Expo, iOS, Android and web) |
 | **Mission hub** | Validates every reading, applies thresholds, detects emergencies, logs check-ins, tracks news from home and prescribes protocols per astronaut | [`hub/`](hub) (Node, runs on the commander's laptop) |
 | **Commander dashboard** | Live crew board, per-astronaut detail and trends, proximity map, protocols, crew album, AI assistant with NASA sources | [`dashboard/`](dashboard) (Next.js) |
@@ -49,6 +49,7 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 |---|---|---|
 | **Chest vest** | ESP32, ECG front end (250 Hz), MPU6050 motion sensor, GY-906 skin temperature, WS2812 LED ring behind a translucent logo disc | [3D view](hardware/vest/PecheraAssem.glb) · [STL](hardware/vest/stl) · [STEP](hardware/vest/step) |
 | **Wrist band** | XIAO ESP32-C3 with MPU motion sensor in its own box, rail sled and phone mount | [3D view](hardware/wrist/MunecaAssem.glb) · [STL](hardware/wrist/stl) |
+| **Head band** | ESP32 with a camera on the forehead: hands-free photos while the phone is in ship mode, sent over Bluetooth to the crew album | firmware in [`firmware/`](firmware) |
 | **Wrist phone** | Android phone that runs the crew app and a local AI model | mount: `soporte_S23plus_v3_respaldo_plano.STL` |
 
 **Why a phone on the wrist and not a smartwatch:** a watch cannot run a language model on board. A phone has the memory to run the companion's AI fully offline, a screen big enough for ship mode, Bluetooth to every sensor and Wi-Fi to the mission laptop. Design notes for spaceflight materials are in [`hardware/README.md`](hardware/README.md#design-for-spaceflight).
@@ -91,7 +92,7 @@ Long missions are monotonous, and exercise is a countermeasure astronauts must k
 - **Who is near whom.** Every phone listens for the other crew phones over Bluetooth and turns signal strength into approximate distance. The commander sees a live map of the crew.
 - **Isolation alerts.** The hub keeps minutes of contact per person and channel (voice, text, in person) and compares the last 24 hours with a 7-day baseline. It flags **withdrawal** (less than half the usual contact), a **spike** (2.5 times the usual), and a **dropped peer** (someone you talked to on most days but not today). Withdrawal or a dropped peer sends a *Talk to a crewmate* protocol.
 - **News from home.** When the commander learns of hard news for a crew member (a loss in the family, for example), they log it once. That person stays on *watch* for 14 days, receives a grief support protocol, and the commander is reminded too. Bad news far from home is one of the situations NASA's behavioral guidance singles out.
-- **Crew album.** The head-band camera takes photos that go straight into a shared album on every phone and on the dashboard. Shared moments are part of feeling like a crew.
+- **Crew album.** The head-band camera (an ESP32 with a camera, worn on the forehead) takes photos hands-free, so the astronaut can capture evidence or a moment while the wrist phone is busy sideways in ship mode. Photos go straight into a shared album on every phone and on the dashboard. Shared moments are part of feeling like a crew.
 
 ### 6. Daily care: protocols and tests
 
