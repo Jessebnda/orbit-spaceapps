@@ -8,6 +8,8 @@ ORBIT is a wearable and software system that lets a crew watch its own physical 
 
 **▶ Demo video (30 s):** [docs/media/orbit-demo.mp4](docs/media/orbit-demo.mp4)
 
+**Quick links:** [Demo video](docs/media/orbit-demo.mp4) · [Technical paper (ES, .md)](docs/ORBIT-paper.md) · [Paper (.docx)](docs/ORBIT-paper.docx) · [Features](#features) · [On-board AI](#on-board-ai-a-92-gb-model-on-a-24-gb-laptop) · [NASA data](#nasa-data-and-resources) · [Hardware](hardware) · [Firmware](firmware) · [Run it](#run-it) · [Status and limits](#status-and-limits)
+
 <p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, wrist band and wrist phone" width="560"></p>
 
 ## High-level summary
