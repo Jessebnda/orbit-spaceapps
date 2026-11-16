@@ -28,6 +28,10 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 |---|---|---|
 | <img src="docs/product/review/screenshots/monochrome-today.png" width="220"> | <img src="docs/product/review/screenshots/monochrome-pet.png" width="220"> | <img src="docs/product/review/screenshots/monochrome-chat.png" width="220"> |
 
+**Ship mode.** Turn the wrist phone sideways and the app becomes a glanceable HUD: vitals in range, the next task, sensor links and a hold-to-SOS button.
+
+<p align="center"><img src="docs/media/ship-mode.jpg" alt="Ship mode: landscape HUD with vitals, next task, sensor links and SOS button" width="720"></p>
+
 ### How it works
 
 ```
