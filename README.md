@@ -26,11 +26,18 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 
 | Today | Companion pet | Pet chat |
 |---|---|---|
-| <img src="docs/product/review/screenshots/monochrome-today.png" width="220"> | <img src="docs/product/review/screenshots/monochrome-pet.png" width="220"> | <img src="docs/product/review/screenshots/monochrome-chat.png" width="220"> |
+| <img src="docs/media/en-today.jpg" width="220"> | <img src="docs/media/en-pet.jpg" width="220"> | <img src="docs/media/en-chat.jpg" width="220"> |
 
 **Ship mode.** Turn the wrist phone sideways and the app becomes a glanceable HUD: vitals in range, the next task, sensor links and a hold-to-SOS button.
 
-<p align="center"><img src="docs/media/ship-mode.jpg" alt="Ship mode: landscape HUD with vitals, next task, sensor links and SOS button" width="720"></p>
+<p align="center"><img src="docs/media/en-ship.jpg" alt="Ship mode: landscape HUD with vitals, next task, sensor links and SOS button" width="720"></p>
+
+**Commander dashboard.** The whole crew at a glance, and protocols the commander can send to any crew member.
+
+<p align="center"><img src="docs/media/en-dash.jpg" alt="Dashboard overview with crew cards and vitals" width="720"></p>
+<p align="center"><img src="docs/media/en-prot.jpg" alt="Protocols screen showing CPR in microgravity steps" width="720"></p>
+
+<sub>Screenshots show the interface translated to English; the app currently ships in Spanish, the team's language. Vitals in screenshots come from the crew simulator.</sub>
 
 ### How it works
 
