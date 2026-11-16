@@ -83,6 +83,8 @@ Long missions are monotonous, and exercise is a countermeasure astronauts must k
 - Like Strava, the point is social: seeing crewmates' outings and cheering for records builds the shared routine that NASA's team research links to cohesion.
 - *Prototype note:* distance is typed in and the route drawing is illustrative; GPS-free indoor tracking from the vest's motion sensor is the next step.
 
+<p align="center"><img src="docs/media/en-achievements.jpg" alt="Achievements: crew effort leaderboard and badges" width="440"> <img src="docs/media/en-explorations.jpg" alt="Explorations feed: routes, pace, longest-outing badge and crew kilometre totals" width="440"></p>
+
 ### 4. Never alone: Orbi, the companion pet
 
 - Every astronaut has **Orbi**, a small creature on the wrist. You pick one of 5 shapes and 6 suit colours, and **the vest's chest light glows in that same colour**, so your pet is literally on you.
