@@ -10,18 +10,31 @@ ORBIT is a wearable and software system that lets a crew watch its own physical 
 
 <p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, wrist band and wrist phone" width="560"></p>
 
+## High-level summary
+
+ORBIT is a health monitor that a crew wears and runs on board, with no link to Earth. A smart vest, a wrist band and a head camera stream vitals to each astronaut's wrist phone. The phone turns those readings into a simple daily picture, and a companion pet named Orbi turns healthy habits into a game. A laptop on board collects the whole crew's data, raises emergencies and prescribes protocols, and it gives the commander an AI assistant that answers from NASA research. It addresses the challenge because the crew can catch a slow decline in heart health, sleep, exercise or mood themselves, before it becomes an emergency, even when Earth is minutes away.
+
 ## The problem
 
-On Moon and Mars missions the crew faces radiation, isolation, confinement and altered gravity, while messages to Earth take minutes and the crew are not doctors. Health checks still depend mostly on ground teams and scattered data. A slow decline in heart health, sleep, exercise or mood can go unnoticed until it becomes an emergency.
+On Moon and Mars missions the crew faces radiation, isolation, confinement and altered gravity, while messages to Earth take minutes and the crew are not doctors. Health checks still depend mostly on ground teams and scattered data. NASA's Human Research Program names isolation and confinement and distance from Earth among the five hazards of spaceflight, and behavioral risk grows with mission length.
+
+## A day with ORBIT
+
+1. **Morning.** The astronaut puts on the vest and the wrist band. The chest light glows in the colour of their pet and the phone on the wrist shows *Today*: heart rate, blood oxygen, pressure and temperature against their normal range, plus a one-minute check-in on mood, stress and how the mission feels.
+2. **Daily tests.** The app asks for a short physical test (5 jumps in place, counted by the vest's motion sensor) and a reaction game. Results go to the crew's achievements and leaderboard, so exercise becomes a shared game instead of a chore.
+3. **During work.** The astronaut turns the phone sideways and gets ship mode: big readable vitals, the next task and a hold-to-SOS button. The vest light pulses with each heartbeat and turns red as heart rate rises, so crewmates can see stress at a glance.
+4. **Feeling low.** Orbi, the companion pet, gets hungry, wants company and notices low mood, short sleep or high stress. The astronaut can talk to it; it runs on the phone, so it works offline, and its advice is drawn from NASA behavioral-health guidance.
+5. **The commander's view.** On the mission laptop the commander sees every crew member live, who is out of range, who is near whom (Bluetooth proximity between phones, so isolation inside the crew is visible), and can send a protocol to anyone. Asking the assistant "Who is out of range right now?" returns an answer built from live data and NASA sources, with its reasoning shown as it thinks.
+6. **Emergency.** If an astronaut holds SOS, or the hub sees critical vitals, every screen goes red with an alarm. The nearest crewmates are shown first, and the phone walks them through CPR adapted for microgravity, step by step.
 
 ## What we built
 
-| Layer | What it does | Where |
+| Part | What it does | Where |
 |---|---|---|
-| **Wearables** | ESP32 chest vest (ECG, heart rate, IMU, skin temperature, LED status light), wrist band (heart rate, IMU), head band (camera) | [`firmware/`](firmware), 3D-printed enclosures designed for microgravity in [`hardware/`](hardware) |
-| **Crew app** | Today view, vitals and trends, daily protocols (physical test, reaction game), SOS with CPR guide, an on-device companion pet ("Orbi") that turns habits into a game, leaderboard and explorations | [`mobile/`](mobile) (Expo, iOS, Android and web) |
-| **Mission hub** | Validates every reading, applies thresholds, detects emergencies, logs check-ins and prescribes protocols per astronaut | [`hub/`](hub) (Node, runs on the commander's laptop) |
-| **Commander dashboard** | Live crew board, per-astronaut detail, proximity graph, protocols, crew album, and an AI assistant that cites NASA sources and shows its reasoning live | [`dashboard/`](dashboard) (Next.js) |
+| **Wearables** | ESP32 chest vest (ECG at 250 Hz, heart rate, motion, skin temperature, LED light), wrist band (heart rate, motion), head band (camera that sends photos to the crew album) | [`firmware/`](firmware), 3D-printed enclosures designed for microgravity in [`hardware/`](hardware) |
+| **Crew app** | Today, check-in, daily tests, Orbi the companion pet, achievements, leaderboard and explorations, crew album, ship mode, SOS with CPR guide | [`mobile/`](mobile) (Expo, iOS, Android and web) |
+| **Mission hub** | Validates every reading, applies thresholds, detects emergencies, logs check-ins, tracks news from home and prescribes protocols per astronaut | [`hub/`](hub) (Node, runs on the commander's laptop) |
+| **Commander dashboard** | Live crew board, per-astronaut detail and trends, proximity map, protocols, crew album, AI assistant with NASA sources | [`dashboard/`](dashboard) (Next.js) |
 | **Shared contract** | One set of types, thresholds, messages and texts used by all parts, with self-checks | [`shared/`](shared) |
 
 | Today | Companion pet | Pet chat |
@@ -88,6 +101,20 @@ Space agency partner and other sources:
 
 - ESA / DGLRM guideline for CPR in microgravity (2020): https://pmc.ncbi.nlm.nih.gov/articles/PMC7607644/
 - WHO, *Psychological first aid: Guide for field workers* (2011): https://www.who.int/publications/i/item/9789241548205
+
+## Benefits and goals
+
+- **Autonomy.** The crew watches its own health on board; Earth becomes a backup, not the bottleneck.
+- **Early warning.** Trends in vitals, sleep, mood and team contact show a decline days before it becomes an emergency.
+- **Adherence.** The pet, achievements and leaderboard make check-ins and exercise something the crew wants to do.
+- **Faster response.** SOS reaches every screen at once, and CPR steps are on the wrist when seconds count.
+- **On Earth too.** The same kit fits isolated teams such as Antarctic stations, submarines, offshore rigs and remote clinics.
+
+Next we want to align thresholds with NASA-STD-3001, move the body network to ESP-NOW with LoRa repeaters across the habitat, add a radiation dose sensor, and test ORBIT in a space analog habitat.
+
+## Tools
+
+TypeScript across the stack · React Native with Expo (iOS, Android, web) · Next.js and Tailwind (dashboard) · Node with WebSockets (hub) · PostgreSQL with pgvector, optional Supabase · llama.cpp with Qwen models (on-board AI), llama.rn on the phone · ESP32 and XIAO ESP32-C3 with Arduino (ECG module, MPU6050, GY-906, WS2812 LEDs) · SolidWorks enclosures (STL and STEP), 3D printed in PLA.
 
 ## Run it
 
