@@ -49,6 +49,8 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 
 <p align="center"><img src="docs/media/vest-front.jpg" alt="The printed chest vest with the ORBIT logo lit by the LED ring" width="520"></p>
 
+<p align="center"><img src="docs/media/wrist-ship-mode.jpg" alt="The wrist phone in its printed mount on the band, in ship mode with live vitals, a protocol card and the hold-to-SOS button" width="520"></p>
+
 <p align="center"><img src="docs/media/wrist-electronics.jpg" alt="Wrist band electronics: XIAO ESP32-C3 and MPU6050 motion sensor wired inside the 3D-printed box" width="300"></p>
 
 | Device | Inside | CAD |
