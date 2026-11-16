@@ -8,7 +8,7 @@ ORBIT is a wearable and software system that lets a crew watch its own physical 
 
 **▶ Demo video (30 s):** [docs/media/orbit-demo.mp4](docs/media/orbit-demo.mp4)
 
-**Quick links:** [Demo video](docs/media/orbit-demo.mp4) · [Technical paper (ES, .md)](docs/ORBIT-paper.md) · [Paper (.docx)](docs/ORBIT-paper.docx) · [Features](#features) · [On-board AI](#on-board-ai-a-92-gb-model-on-a-24-gb-laptop) · [NASA data](#nasa-data-and-resources) · [Hardware](hardware) · [Firmware](firmware) · [Run it](#run-it) · [Status and limits](#status-and-limits)
+**Quick links:** [Demo video](docs/media/orbit-demo.mp4) · [Technical paper (ES, .md)](docs/ORBIT-paper.md) · [Paper (.docx)](docs/ORBIT-paper.docx) · [Features](#features) · [On-board AI](#on-board-ai-a-92-gb-model-on-a-24-gb-laptop) · [NASA data](#nasa-data-and-resources) · [Hardware and CAD](#hardware-and-cad) · [Firmware](firmware) · [Run it](#run-it) · [Status and limits](#status-and-limits)
 
 <p align="center"><img src="docs/media/team.jpg" alt="The ORBIT team wearing the prototype: chest vest with the LED status light, wrist band and wrist phone" width="560"></p>
 
@@ -38,6 +38,20 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 | **Mission hub** | Validates every reading, applies thresholds, detects emergencies, logs check-ins, tracks news from home and prescribes protocols per astronaut | [`hub/`](hub) (Node, runs on the commander's laptop) |
 | **Commander dashboard** | Live crew board, per-astronaut detail and trends, proximity map, protocols, crew album, AI assistant with NASA sources | [`dashboard/`](dashboard) (Next.js) |
 | **Shared contract** | One set of types, thresholds, messages and texts used by all parts, with self-checks | [`shared/`](shared) |
+
+## Hardware and CAD
+
+We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nakashima). Every part is in [`hardware/`](hardware) as printable STL and editable STEP, plus a full assembly in `.glb` that GitHub opens as an interactive 3D view.
+
+<p align="center"><img src="docs/media/cad-vest.png" alt="Chest vest enclosure assembly" width="430"> <img src="docs/media/cad-wrist.png" alt="Wrist phone mount assembly" width="430"></p>
+
+| Device | Inside | CAD |
+|---|---|---|
+| **Chest vest** | ESP32, ECG front end (250 Hz), MPU6050 motion sensor, GY-906 skin temperature, WS2812 LED ring behind a translucent logo disc | [3D view](hardware/vest/PecheraAssem.glb) · [STL](hardware/vest/stl) · [STEP](hardware/vest/step) |
+| **Wrist band** | XIAO ESP32-C3 with MPU motion sensor in its own box, rail sled and phone mount | [3D view](hardware/wrist/MunecaAssem.glb) · [STL](hardware/wrist/stl) |
+| **Wrist phone** | Android phone that runs the crew app and a local AI model | mount: `soporte_S23plus_v3_respaldo_plano.STL` |
+
+**Why a phone on the wrist and not a smartwatch:** a watch cannot run a language model on board. A phone has the memory to run the companion's AI fully offline, a screen big enough for ship mode, Bluetooth to every sensor and Wi-Fi to the mission laptop. Design notes for spaceflight materials are in [`hardware/README.md`](hardware/README.md#design-for-spaceflight).
 
 ## Features
 
