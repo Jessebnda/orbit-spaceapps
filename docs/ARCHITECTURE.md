@@ -82,16 +82,7 @@ Esto dispara el protocolo mental `connect_crew` y aparece en el dashboard.
 - KV cache en Q8 con contexto de 64k → cabe con el resto del sistema.
 - Ventaja para la misión: sin servidor, sin red, los datos médicos nunca salen de la nave.
 
-Benchmark para llenar en el pitch (con el server arriba):
-
-```bash
-~/models/qwen38-flash-next-uncensored/serve.sh
-curl -s localhost:8080/v1/chat/completions -H 'content-type: application/json' \
-  -d '{"messages":[{"role":"user","content":"Resume en 3 puntos el riesgo de pérdida ósea en una misión a Marte"}],"max_tokens":200}' \
-  | python3 -c 'import sys,json; t=json.load(sys.stdin)["timings"]; print(f"prompt {t[\"prompt_per_second\"]:.1f} t/s · gen {t[\"predicted_per_second\"]:.1f} t/s")'
-```
-
-Tools del agente: `get_crew_overview`, `get_member_history`, `get_comms`, `search_knowledge` (RAG), `list_protocols`, `trigger_protocol`, `create_protocol`.
+ Tools del agente: `get_crew_overview`, `get_member_history`, `get_comms`, `search_knowledge` (RAG), `list_protocols`, `trigger_protocol`, `create_protocol`.
 
 ## 7. Memoria: todo se carga cuando se usa y se suelta solo
 
@@ -99,15 +90,14 @@ Tools del agente: `get_crew_overview`, `get_member_history`, `get_comms`, `searc
 
 | Pieza | Cuándo se carga | Cuándo se libera | RAM |
 |---|---|---|---|
-| Flash Next (`hub/scripts/llm.sh`) | 1ª pregunta al asistente (si ya corre tu `serve.sh`, se reutiliza) | `--sleep-idle-seconds 300`: el server descarga el modelo tras 5 min sin uso y lo recarga al siguiente request | ~12–15 GB activo · casi 0 dormido |
+| Flash Next (`hub/scripts/llm.sh`) | 1ª pregunta al asistente | `--sleep-idle-seconds 300`: el server descarga el modelo tras 5 min sin uso y lo recarga al siguiente request | ~12–15 GB activo · casi 0 dormido |
 | Mascota de respaldo en el hub | nunca despierta a Flash Next; solo lo usa si ya está despierto | — | 0 |
 | Encoder e5-small (RAG) | 1ª búsqueda o ingest | `dispose()` tras 5 min sin uso | ~200 MB activo |
 | pgvector (Docker) | `npm run db` | `docker compose stop` | ~20 MB medido (tope 256 MB) |
 | Hub (buffers con tope) | siempre | — | <100 MB |
 | Dashboard | mientras está abierto | — | snapshot reemplaza, gráficas ≤500 puntos |
 
-`llm.sh` arranca Flash Next **sin** `--agent` ni MCP: tu `serve.sh` le da tools de computadora, que aquí no deben estar.
-Docker Desktop tiene ~12 GB asignados a su VM: bájalo a 2 GB (Settings → Resources).
+`llm.sh` arranca el modelo **sin** herramientas de control de la computadora: solo las tools del agente del hub.
 
 **Celular**
 
@@ -118,7 +108,6 @@ Docker Desktop tiene ~12 GB asignados a su VM: bájalo a 2 GB (Settings → Reso
 | Escaneo BLE de proximidad | app en primer plano | se pausa en background (las 3 ESP32 propias siguen conectadas) |
 | Historial | 24 h a 1 muestra/min | ring buffer, AsyncStorage solo guarda agregados |
 
-**Contexto de los agentes de código (skills)**: cada skill visible carga su descripción en cada sesión. Solo hay skills por carpeta, para que carguen solo al trabajar ahí: `mobile/.claude/skills` (apple-design, mobile-native, animate-expo) y `dashboard/.claude/skills` (design-taste-frontend, emil-design-eng). La raíz no tiene ninguna; ponytail y superpowers ya vienen de tus plugins globales.
 
 ## 8. Umbrales
 
