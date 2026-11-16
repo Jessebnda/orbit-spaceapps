@@ -111,7 +111,7 @@ Long missions are monotonous, and exercise is a countermeasure astronauts must k
 
 ### 7. Emergencies
 
-- **Automatic triggers** from the vitals: heart rate under 30 or over 180 (or under 40 with low oxygen), blood oxygen under 88%, temperature of 39 °C or more, or blood pressure of 180/120 or more.
+- **Automatic triggers** from the vitals: heart rate under 30 or over 180 (or under 40 with oxygen under 85%), blood oxygen under 88%, temperature of 39 °C or more, or blood pressure of 180/120 or more.
 - **Manual SOS:** hold the red button on the wrist.
 - **The nearest two crewmates are called first**, using the same Bluetooth distance; if nobody is in range, everyone online is alerted.
 - The person in trouble sees a calm message; rescuers see that they are first or second responder, and for cardiac arrest the phone runs a **CPR guide for microgravity** (110 compressions per minute, 30:2, switch rescuers every 2 minutes). The dashboard shows a red banner, a timer, responders with their distance and an alarm sound; resolving takes a deliberate two-step confirmation.
@@ -176,13 +176,14 @@ A crew far from Earth cannot call a cloud model, and medical data should never l
 
 The launch script is [`hub/scripts/llm.sh`](hub/scripts/llm.sh). It serves an OpenAI-compatible API on `localhost:8080` with no network access and no computer-control tools. Generation runs at about 9 tokens per second, so the hub streams the model's thinking to the dashboard as it arrives instead of leaving the commander staring at a spinner.
 
-**Tools.** The assistant ([`hub/src/services/agent.ts`](hub/src/services/agent.ts)) is a tool-calling agent. Each question runs up to 4 rounds: the model thinks, calls tools, reads the results and answers; the last round has no tools, so it must answer with what it gathered. Its tools:
+**Tools.** The assistant ([`hub/src/services/agent.ts`](hub/src/services/agent.ts)) is a tool-calling agent. Each question runs up to 4 rounds: the model thinks, calls tools, reads the results and answers; the last round has no tools, so it must answer with what it gathered. Its eight tools:
 
 | Tool | What it does |
 |---|---|
 | `get_crew_overview` | Live vitals, status and last contact for every crew member |
 | `get_member_history` | One astronaut's trends over time |
-| `get_comms` | Who has been near whom (team contact and isolation) |
+| `get_comms` | Minutes of conversation today and isolation anomalies against the member's own baseline |
+| `get_behavior_insights` | 7-day behavior analysis: sleep, mood, communication and jump tests |
 | `search_knowledge` | Retrieval over the NASA knowledge base (below) |
 | `list_protocols` | The protocol library |
 | `trigger_protocol` | Sends a protocol to an astronaut's phone, with a reason |
@@ -308,7 +309,7 @@ orbit-spaceapps/
 - **Working:** vest streaming 250 Hz ECG, heart rate, IMU and skin temperature to the phone over Bluetooth, chest LED light painted in the astronaut's pet colour that pulses with each heartbeat and turns red as heart rate rises, crew app on iOS, Android and web, hub, dashboard, on-board assistant with NASA sources, SOS flow, daily protocols.
 - **Enclosures** are PLA prototypes. A flight version would use flame-retardant, low off-gassing materials such as ULTEM 9085 or PEEK ([details](hardware/README.md#design-for-spaceflight)).
 - **Not measured by wearables:** glucose, EEG, bone and muscle loss. The hub prescribes a check on the ship's dedicated equipment instead.
-- **Thresholds** are generic adult clinical ranges for now (`shared/src/index.ts`); the next step is to align them with NASA-STD-3001.
+- **Thresholds** are generic adult clinical ranges for now (`shared/src/index.ts`), and emergency triggers are in `hub/src/domain/rules.ts`; the next step is to align them with NASA-STD-3001.
 - **Planned:** ESP-NOW body network with LoRa repeaters across the habitat, a radiation dose sensor, and a 3D crew status view.
 
 ## Use of AI
