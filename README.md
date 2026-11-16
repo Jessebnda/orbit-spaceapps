@@ -2,6 +2,8 @@
 
 # ORBIT: Onboard Risk & Behavioral Insight Tracker
 
+<p align="center"><b>🏆 Local winner · NASA Space Apps Challenge 2026, Mexicali</b></p>
+
 **NASA Space Apps Challenge 2026** · Challenge: *Create Health Monitoring Software for Astronauts on Space Missions* · CETYS Universidad, Mexicali
 
 ORBIT is a wearable and software system that lets a crew watch its own physical and behavioral health **with no link to Earth**. Sensor garments stream vitals to each astronaut's wrist phone. The phone sends them over the habitat's local network to a mission computer, which runs the rules, raises emergencies, prescribes protocols and answers the commander through an AI assistant that runs entirely on board.
