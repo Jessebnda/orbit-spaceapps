@@ -62,6 +62,26 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 | **Head band** | ESP32 with a camera on the forehead: hands-free photos while the phone is in ship mode, sent over Bluetooth to the crew album | firmware in [`firmware/`](firmware) |
 | **Wrist phone** | Android phone that runs the crew app and a local AI model | mount: `soporte_S23plus_v3_respaldo_plano.STL` |
 
+**Bill of materials (approximate retail prices, USD, per astronaut):**
+
+| Part | Qty | Approx. cost |
+|---|---|---|
+| ESP32 dev board (vest) | 1 | $6 |
+| ECG front end (AD8232-type) with leads and electrodes | 1 | $15 |
+| MPU6050 motion sensor (vest and wrist) | 2 | $6 |
+| GY-906 infrared skin temperature sensor | 1 | $12 |
+| WS2812 LED ring | 1 | $5 |
+| XIAO ESP32-C3 (wrist band and head band) | 2 | $10 |
+| Camera module (head band) | 1 | $8 |
+| Batteries, regulators, wiring | set | $15 |
+| PLA for printed enclosures (about 250 g) | | $5 |
+| Straps, elastic band, screws | set | $10 |
+| **Wearables total** | | **≈ $92** |
+| Android phone (any phone able to run a 4B model; we used ones we already had) | 1 | existing |
+| Mission laptop (one per crew) | 1 | existing |
+
+The wearables cost under $100 per person with off-the-shelf parts, so the system is cheap to replicate for analog missions, research stations or classrooms.
+
 **Links between devices.** Each link uses the protocol that fits its data:
 
 | Link | Protocol | Why |
