@@ -62,6 +62,17 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 | **Head band** | ESP32 with a camera on the forehead: hands-free photos while the phone is in ship mode, sent over Bluetooth to the crew album | firmware in [`firmware/`](firmware) |
 | **Wrist phone** | Android phone that runs the crew app and a local AI model | mount: `soporte_S23plus_v3_respaldo_plano.STL` |
 
+**Links between devices.** Each link uses the protocol that fits its data:
+
+| Link | Protocol | Why |
+|---|---|---|
+| Vest → phone | Bluetooth Classic (serial profile) | Continuous 250 Hz ECG plus motion needs a steady, high-rate stream; the phone sends the pet colour back for the LED ring |
+| Wrist band → phone | Bluetooth Low Energy | Small, periodic heart rate and motion packets; low power for a battery band |
+| Head band → phone | Bluetooth Low Energy | The phone asks for a photo with one command; the JPEG comes back in chunks sized to the BLE packet (up to 244 bytes) |
+| Phone ↔ phone | Bluetooth Low Energy scanning | Signal strength (RSSI) between crew phones is turned into approximate distance for proximity and nearest-responder SOS |
+| Phone ↔ mission laptop | Wi-Fi, WebSocket on the habitat's local network | All crew data, protocols, SOS and photos; no internet needed |
+| Planned | ESP-NOW body network with LoRa repeaters | Longer range across the whole habitat |
+
 **Why a phone on the wrist and not a smartwatch:** a watch cannot run a language model on board. A phone has the memory to run the companion's AI fully offline, a screen big enough for ship mode, Bluetooth to every sensor and Wi-Fi to the mission laptop. Design notes for spaceflight materials are in [`hardware/README.md`](hardware/README.md#design-for-spaceflight).
 
 ## Features
