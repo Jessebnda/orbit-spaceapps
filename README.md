@@ -75,9 +75,8 @@ The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds w
 
 ## Status and limits
 
-- **Working:** live vest ECG and IMU in the app, LED status light that follows the heartbeat and turns red as heart rate rises, crew app on iOS, Android and web, hub, dashboard, on-board assistant with NASA sources, SOS flow, daily protocols.
+- **Working:** vest streaming 250 Hz ECG, heart rate and IMU to the phone over Bluetooth, chest LED light painted in the astronaut's pet colour that pulses with each heartbeat and turns red as heart rate rises, crew app on iOS, Android and web, hub, dashboard, on-board assistant with NASA sources, SOS flow, daily protocols.
 - **Simulated in the demo:** blood pressure, temperature (when the sensor is missing), water and sleep. These are clearly generated values for demonstration, not readings.
-- **Known hardware issue:** our current vest board browns out when its Bluetooth radio starts, so the latest firmware ships with Bluetooth off (`USAR_BT` in `firmware/esp_sensores`) until the power supply is fixed.
 - **Not measured by wearables:** glucose, EEG, bone and muscle loss. The hub prescribes a check on the ship's dedicated equipment instead.
 - **Thresholds** are generic adult clinical ranges for now (`shared/src/index.ts`); the next step is to align them with NASA-STD-3001.
 - **Planned:** ESP-NOW body network with LoRa repeaters across the habitat, a radiation dose sensor, and a 3D crew status view.

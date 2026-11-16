@@ -9,7 +9,6 @@
 #include <freertos/task.h>
 #include <math.h>
 #include <stdint.h>
-#include <math.h>
 
 // Detector experimental por amplitud e intervalos entre picos.
 class DetectorBPM {
@@ -110,31 +109,69 @@ DetectorBPM detector;
 
 const int PIN_LEDS = 16;
 const int NUM_LEDS = 40;
-const bool USAR_BT = false; // la placa se cae por voltaje al prender BT
-bool hayGY906 = true;
-const int BRILLO_MINIMO = 3;
+const int BRILLO_MINIMO = 60; // con 3 cada canal queda en 0-2 y los colores no se distinguen (amarillo salia verde)
 const int BRILLO_MAXIMO = 255;
 const float ECG_REPOSO = 120.0f;
 const float ECG_PICO = 400.0f;
+// Pulso donde la tira empieza a ponerse roja y donde ya es rojo total (umbrales "vigilar" y "critico" de la app).
+const float BPM_CALMA = 100.0f;
+const float BPM_ROJO = 130.0f;
 
-Adafruit_NeoPixel tira(NUM_LEDS, PIN_LEDS, NEO_BRG + NEO_KHZ800);
+Adafruit_NeoPixel tira(NUM_LEDS, PIN_LEDS, NEO_RGB + NEO_KHZ800); // esta tira es RGB: con BRG el coral salia verde y la menta morada
 float amplitudLuces = 0;
 float ultimaAmplitudLuces = 0;
 float brilloLuces = BRILLO_MINIMO;
 int ultimoBrillo = -1;
+uint32_t ultimoColor = 0;
 uint32_t tiempoLuces = 0;
 volatile bool pedirPruebaLuces = false;
 bool pruebaLucesActiva = false;
 uint32_t inicioPruebaLuces = 0;
+// Color de la mascota, lo manda la app con "C,r,g,b". Azul de antes hasta que llegue.
+volatile uint8_t mascotaR = 80, mascotaG = 180, mascotaB = 255;
+
+// Los colores de la mascota son pastel y en LED se ven casi blancos: estirar el canal minimo a 0 los satura.
+void ponerColorMascota(int r, int g, int b) {
+  r = constrain(r, 0, 255); g = constrain(g, 0, 255); b = constrain(b, 0, 255);
+  int menor = min(r, min(g, b)), mayor = max(r, max(g, b));
+  if (mayor > menor) {
+    r = (r - menor) * 255 / (mayor - menor);
+    g = (g - menor) * 255 / (mayor - menor);
+    b = (b - menor) * 255 / (mayor - menor);
+  }
+  mascotaR = r; mascotaG = g; mascotaB = b;
+}
+
+// Mezcla del color de la mascota hacia rojo segun el pulso: 0 bajo BPM_CALMA, 1 en BPM_ROJO o mas.
+uint32_t colorActual() {
+  float bpm = detector.bpm;
+  float t = isfinite(bpm) ? (bpm - BPM_CALMA) / (BPM_ROJO - BPM_CALMA) : 0;
+  t = fmaxf(0.0f, fminf(1.0f, t));
+  return tira.Color(mascotaR + t * (255 - mascotaR), mascotaG * (1 - t), mascotaB * (1 - t));
+}
 
 void pintarLuces(int brillo) {
-  if (brillo == ultimoBrillo) return;
+  // gamma: el verde del LED brilla mucho mas que el rojo, sin esto el amarillo y la arena se ven verdes
+  uint32_t c = tira.gamma32(colorActual());
+  // Tope de consumo: el azul original (80,180,255) a 255 si aguantaba; el blanco a 255 jala ~50 % mas y reiniciaba la ESP.
+  int suma = ((c >> 16) & 0xFF) + ((c >> 8) & 0xFF) + (c & 0xFF);
+  if (suma > 515) brillo = brillo * 515 / suma;
+  if (brillo == ultimoBrillo && c == ultimoColor) return;
   tira.setBrightness(brillo);
   for (int i = 0; i < NUM_LEDS; i++) {
-    tira.setPixelColor(i, tira.Color(80, 180, 255));
+    tira.setPixelColor(i, c);
   }
   tira.show();
   ultimoBrillo = brillo;
+  ultimoColor = c;
+}
+
+// "C,r,g,b" cambia el color de la mascota; devuelve true si la linea era eso.
+bool comandoColor(const String &l) {
+  int r, g, b;
+  if (!l.startsWith("C,") || sscanf(l.c_str() + 2, "%d,%d,%d", &r, &g, &b) != 3) return false;
+  ponerColorMascota(r, g, b);
+  return true;
 }
 
 const char encabezadoCSV[] =
@@ -159,6 +196,7 @@ float qw = 1, qx = 0, qy = 0, qz = 0;
 float anguloX = NAN, anguloY = NAN, anguloZ = NAN;
 float accelX = NAN, accelY = NAN, accelZ = NAN;
 double temperaturaObjeto = NAN;
+bool hayIMU = false, hayTemperatura = false;
 
 int ecgCrudo = 0;
 float filtrado = 0, centro = 0;
@@ -237,7 +275,9 @@ void tareaBluetooth(void *parametro) {
         SerialBT.printf("%s,%lu\n", l.c_str(), us);
       } else {
         l.trim();
-        if (l == "L" || l == "l") {
+        if (comandoColor(l)) {
+          SerialBT.printf("LED,color=%d,%d,%d\n", mascotaR, mascotaG, mascotaB);
+        } else if (l == "L" || l == "l") {
           SerialBT.printf("LED,firmware=PECHO_250HZ,ecg_filtrado=%.1f,pico=%.1f,brillo_enviado=%d\n",
                           senalECG, ultimaAmplitudLuces, ultimoBrillo);
         } else if (l == "T" || l == "t") {
@@ -414,10 +454,11 @@ void leerIMU() {
 void setup() {
   Serial.setTxBufferSize(512);
   Serial.begin(115200);
+  Serial.setTimeout(20); // un comando sin salto de linea no frena el muestreo 1 s
   Serial.println("INFO: PECHO_250HZ");
 
   tira.begin();
-  pintarLuces(BRILLO_MINIMO);
+  pintarLuces(0); // apagada hasta que el Bluetooth arranque: su pico de corriente junto con la tira tiraba el voltaje (brownout)
 
   pinMode(ecg, INPUT);
   pinMode(loMenos, INPUT);
@@ -430,31 +471,42 @@ void setup() {
 
   delay(200);
 
-  if (!mpu.begin(0x68, &Wire)) {
-    Serial.println("ERROR: No se encontro el MPU6050.");
-    while (true) delay(1000);
+  // Un sensor que falta ya no detiene todo: sin esto la ESP se quedaba sin Bluetooth y la app no la veia.
+  hayIMU = mpu.begin(0x68, &Wire);
+  if (!hayIMU) Serial.println("ERROR: No se encontro el MPU6050. Sigo sin IMU.");
+  hayTemperatura = sensor.begin(0x5A, &Wire1);
+  if (!hayTemperatura) {
+    Serial.println("ERROR: No se encontro el GY-906. Sigo sin temperatura.");
+    // Lista lo que si responde en sus pines (32/33): nada = cable o alimentacion; otra direccion = otro sensor.
+    Serial.print("INFO: I2C pines 32/33:");
+    for (uint8_t d = 1; d < 127; d++) {
+      Wire1.beginTransmission(d);
+      if (Wire1.endTransmission() == 0) Serial.printf(" 0x%02X", d);
+    }
+    Serial.print("  | pines 22/23:");
+    for (uint8_t d = 1; d < 127; d++) {
+      Wire.beginTransmission(d);
+      if (Wire.endTransmission() == 0) Serial.printf(" 0x%02X", d);
+    }
+    Serial.println();
   }
 
-  if (!sensor.begin(0x5A, &Wire1)) {
-    Serial.println("AVISO: No se encontro el GY-906, sigo sin temperatura.");
-    hayGY906 = false;
+  if (hayIMU) {
+    mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    delay(100);
+    calibrar();
   }
-
-  mpu.setAccelerometerRange(MPU6050_RANGE_4_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
-  delay(100);
-  calibrar();
-  if (hayGY906) temperaturaObjeto = sensor.readObjectTempC();
+  if (hayTemperatura) temperaturaObjeto = sensor.readObjectTempC();
 
   colaBT = xQueueCreate(16, sizeof(PaqueteBT));
-  if (USAR_BT && (colaBT == nullptr || !SerialBT.begin("ESP32_Sensores"))) {
+  if (colaBT == nullptr || !SerialBT.begin("ESP32_Sensores")) {
     Serial.println("ERROR: No se pudo iniciar Bluetooth.");
     while (true) delay(1000);
   }
 
-  if (USAR_BT && xTaskCreate(tareaBluetooth, "envioBT", 4096,
+  if (xTaskCreate(tareaBluetooth, "envioBT", 4096,
                   nullptr, 1, nullptr) != pdPASS) {
     Serial.println("ERROR: No se pudo iniciar el envio Bluetooth.");
     while (true) delay(1000);
@@ -467,13 +519,16 @@ void setup() {
 }
 
 void loop() {
-  // L consulta el brillo; T prueba la tira y vuelve al ECG automaticamente.
+  // L consulta el brillo; T prueba la tira; C,r,g,b pone el color de la mascota.
   while (Serial.available()) {
-    char comando = Serial.read();
-    if (comando == 'L' || comando == 'l') {
+    String l = Serial.readStringUntil('\n');
+    l.trim();
+    if (comandoColor(l)) {
+      Serial.printf("LED,color=%d,%d,%d\n", mascotaR, mascotaG, mascotaB);
+    } else if (l == "L" || l == "l") {
       Serial.printf("LED,firmware=PECHO_250HZ,ecg_filtrado=%.1f,pico=%.1f,brillo_enviado=%d\n",
                     senalECG, ultimaAmplitudLuces, ultimoBrillo);
-    } else if (comando == 'T' || comando == 't') {
+    } else if (l == "T" || l == "t") {
       pedirPruebaLuces = true;
       Serial.println("LED,prueba=0_y_255,duracion_ms=1400");
     }
@@ -489,14 +544,14 @@ void loop() {
   }
 
   ahora = micros();
-  if (ahora - tiempoIMU >= 10000) {
+  if (hayIMU && ahora - tiempoIMU >= 10000) {
     leerIMU();
   }
 
   ahora = micros();
   if (ahora - tiempoTemperatura >= 100000) {
     tiempoTemperatura = ahora;
-    if (hayGY906) temperaturaObjeto = sensor.readObjectTempC();
+    if (hayTemperatura) temperaturaObjeto = sensor.readObjectTempC();
   }
 
   if (nuevaMuestraECG) {
