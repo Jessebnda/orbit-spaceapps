@@ -46,11 +46,11 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 
 More detail: [Architecture](docs/ARCHITECTURE.md) · [Conventions](docs/CONVENTIONS.md) · [Design brief](docs/product/DESIGN-BRIEF.md)
 
-## Why NASA behavioral health research is at the core
+## From NASA research to features
 
-On long missions, isolation and confinement and distance from Earth are two of the five hazards that NASA's Human Research Program (HRP) names, and the chance of an adverse behavioral or psychiatric event grows with mission length. ORBIT turns that evidence into daily features: it watches for the slow drift NASA describes (mood, stress, sleep, crew friction) instead of waiting for a crisis. Loneliness is treated as an operational risk, not a soft extra.
+Isolation and confinement and distance from Earth are two of the five hazards named by NASA's Human Research Program (HRP), and the chance of an adverse behavioral event grows with mission length. Each ORBIT feature answers one of these findings:
 
-| NASA finding (paraphrased) | What ORBIT does with it | Source |
+| NASA finding (paraphrased) | ORBIT feature | Source |
 |---|---|---|
 | Isolation and confinement weigh most on behavioral health on long missions; distance, microgravity and radiation add to it | The whole app is organized around the crew's mental state, not only vitals | HRP 5 Hazards; [`hub/kb/salud-conductual-nasa.md`](hub/kb/salud-conductual-nasa.md) |
 | Positive mood drifts down with time in isolation and tracks operational performance | Daily check-in (mood, stress, mission outlook) tracked as a trend; a gradual dip is not an alarm by itself | APEX results (NTRS 20260002661); [`apex-resultados.md`](hub/kb/apex-resultados.md) |
