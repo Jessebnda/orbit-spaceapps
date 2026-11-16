@@ -62,6 +62,10 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 | **Head band** | ESP32 with a camera on the forehead: hands-free photos while the phone is in ship mode, sent over Bluetooth to the crew album | firmware in [`firmware/`](firmware) |
 | **Wrist phone** | Android phone that runs the crew app and a local AI model | mount: `soporte_S23plus_v3_respaldo_plano.STL` |
 
+**Custom PCB (by Alejandro Pineda Aguirre).** A sensor board designed in KiCad that replaces loose wiring: sockets for the ESP32, a MAX30102 heart rate and blood oxygen sensor and an MPU6050 motion sensor, a screw terminal for power and the ORBIT logo on the silkscreen. KiCad project: [schematic](hardware/vest/kicad%20pecho.kicad_sch) · [board](hardware/vest/kicad%20pecho.kicad_pcb).
+
+<p align="center"><img src="hardware/vest/PCB.png" alt="ORBIT sensor PCB in KiCad with ESP32, MAX30102 and MPU6050 headers" width="560"></p>
+
 **Bill of materials (approximate retail prices, USD, per astronaut):**
 
 | Part | Qty | Approx. cost |
@@ -71,12 +75,14 @@ We designed and 3D printed our own enclosures in SolidWorks (by Erick Blanco Nak
 | MPU6050 motion sensor (vest and wrist) | 2 | $6 |
 | GY-906 infrared skin temperature sensor | 1 | $12 |
 | WS2812 LED ring | 1 | $5 |
+| MAX30102 heart rate and SpO2 sensor | 1 | $4 |
+| Custom PCB (small batch, per board) | 1 | $2 |
 | XIAO ESP32-C3 (wrist band and head band) | 2 | $10 |
 | Camera module (head band) | 1 | $8 |
 | Batteries, regulators, wiring | set | $15 |
 | PLA for printed enclosures (about 250 g) | | $5 |
 | Straps, elastic band, screws | set | $10 |
-| **Wearables total** | | **≈ $92** |
+| **Wearables total** | | **≈ $98** |
 | Android phone (any phone able to run a 4B model; we used ones we already had) | 1 | existing |
 | Mission laptop (one per crew) | 1 | existing |
 
