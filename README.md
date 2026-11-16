@@ -37,6 +37,71 @@ On Moon and Mars missions the crew faces radiation, isolation, confinement and a
 | **Commander dashboard** | Live crew board, per-astronaut detail and trends, proximity map, protocols, crew album, AI assistant with NASA sources | [`dashboard/`](dashboard) (Next.js) |
 | **Shared contract** | One set of types, thresholds, messages and texts used by all parts, with self-checks | [`shared/`](shared) |
 
+## Features
+
+ORBIT treats health as physical and psychological at once. NASA's research says isolation, monotony and distance wear a crew down slowly, so most features are built around three ideas from psychology: **feeling seen** (someone notices how you are), **belonging** (you are part of a crew, not alone in a can), and **motivation through progress** (small, visible wins that make healthy habits stick).
+
+### 1. Know how you are: Today, check-in and insights
+
+- **Today screen.** Heart rate, blood oxygen, blood pressure and temperature, each against its normal range, plus daily goals for activity, food and water with a mark for where you should be by now.
+- **Daily check-in (one minute).** Mood (an interactive shape that changes with your answer), stress (calm to very high), mission outlook (pessimistic to optimistic), plus free text for discomfort and a note. NASA's isolation studies use the same kind of short daily self-report to catch mood drift early.
+- **Insights.** After 5 days the app compares your last 3 days with the days before and tells you in plain words when something changed, with a 7-day chart: sleep down an hour or more, mood falling, talking to the crew less than half as much, gaming much more while mood drops, or patterns such as "your mood follows your sleep" and "your stress drops on active days".
+
+### 2. Motivation through progress: achievements, levels and leaderboard
+
+Long missions are monotonous, and exercise is a countermeasure astronauts must keep up for months. ORBIT makes progress visible:
+
+- **10 achievements with XP**, for example *First log* (first check-in), *Stable orbit* (7-day check-in streak), *Countermeasure* (120 minutes of exercise in a day), *Circadian* (3 nights of 7 hours or more), *Long walk* (10 km in total) and *Lifesaver* (a CPR drill).
+- **Levels.** Every 500 XP is a new level, shown as a ring on your profile that fills as you go.
+- **Crew leaderboard.** Ranks the day's *effort points*: minutes of activity, checking in, time spent with the pet and distance explored, capped so nobody wins by overtraining. It rewards taking care of yourself, not raw performance.
+
+### 3. Explorations: a Strava for the crew
+
+- Log each outing or training session (an EVA walk, a treadmill run, a habitat circuit) with a title, place, stopwatch time and distance. The app works out the pace.
+- Each outing appears in the crew feed on the dashboard with its route card, pace and a **personal record** badge when it is someone's longest, plus weekly totals and a crew ranking by kilometres.
+- Like Strava, the point is social: seeing crewmates' outings and cheering for records builds the shared routine that NASA's team research links to cohesion.
+- *Prototype note:* distance is typed in and the route drawing is illustrative; GPS-free indoor tracking from the vest's motion sensor is the next step.
+
+### 4. Never alone: Orbi, the companion pet
+
+- Every astronaut has **Orbi**, a small creature on the wrist. You pick one of 5 shapes and 6 suit colours, and **the vest's chest light glows in that same colour**, so your pet is literally on you.
+- Orbi has three needs: **food**, **affection** and **company**. They empty over hours (8, 6 and 12) and you refill them by feeding, petting and talking to it. Caring for something small every day is a gentle routine with a reason behind it.
+- Orbi reads your state. It gets **sad** if your last check-in showed low mood or high stress and you have not talked since, if a vital is critical, or if a need runs out; it gets **tired** when you slept under 6 hours. Its face is a mirror that nudges you to check in.
+- **Talk to Orbi.** A chat with an AI that runs on the phone, so it works with no network. Suggested openers ("I want to tell you how my day is going", "I feel tired") lower the barrier to talking. If a message sounds like a crisis, Orbi always answers with a fixed line that points to a human crewmate.
+- **Guided session (4 minutes).** How do you feel, two short questions, three breathing cycles, close.
+
+### 5. Belonging: proximity, team contact and news from home
+
+- **Who is near whom.** Every phone listens for the other crew phones over Bluetooth and turns signal strength into approximate distance. The commander sees a live map of the crew.
+- **Isolation alerts.** The hub keeps minutes of contact per person and channel (voice, text, in person) and compares the last 24 hours with a 7-day baseline. It flags **withdrawal** (less than half the usual contact), a **spike** (2.5 times the usual), and a **dropped peer** (someone you talked to on most days but not today). Withdrawal or a dropped peer sends a *Talk to a crewmate* protocol.
+- **News from home.** When the commander learns of hard news for a crew member (a loss in the family, for example), they log it once. That person stays on *watch* for 14 days, receives a grief support protocol, and the commander is reminded too. Bad news far from home is one of the situations NASA's behavioral guidance singles out.
+- **Crew album.** The head-band camera takes photos that go straight into a shared album on every phone and on the dashboard. Shared moments are part of feeling like a crew.
+
+### 6. Daily care: protocols and tests
+
+- **Protocol library:** emergency (CPR in microgravity, hypoxia, fever, hypertensive crisis, panic attack), physical (jumping exercise, hydration, sleep hygiene, eat a full meal) and mental (box breathing, talk to a crewmate, grief support, 5-minute journal). Each one is a short list of steps on the phone.
+- **Who sends them.** The hub's rules (for example low activity late in the day, under 6 hours of sleep, low water, low mood or high stress, hard news, isolation alerts), the commander by hand, or the AI assistant. Each protocol is sent at most once every 30 minutes, so nobody gets nagged.
+- **Daily tests.** A physical test of **5 jumps in place**, counted by the vest's motion sensor (heart rate is ignored during the test because motion distorts it), and a **5-try reaction test** for alertness. A **CPR drill** keeps rescue skills fresh.
+- **Orbit Defender.** A short arcade game (waves of enemies, coins, shields and extra lives) for a break, which also counts toward an achievement and toward the insights on gaming versus mood.
+
+### 7. Emergencies
+
+- **Automatic triggers** from the vitals: heart rate under 30 or over 180 (or under 40 with low oxygen), blood oxygen under 88%, temperature of 39 °C or more, or blood pressure of 180/120 or more.
+- **Manual SOS:** hold the red button on the wrist.
+- **The nearest two crewmates are called first**, using the same Bluetooth distance; if nobody is in range, everyone online is alerted.
+- The person in trouble sees a calm message; rescuers see that they are first or second responder, and for cardiac arrest the phone runs a **CPR guide for microgravity** (110 compressions per minute, 30:2, switch rescuers every 2 minutes). The dashboard shows a red banner, a timer, responders with their distance and an alarm sound; resolving takes a deliberate two-step confirmation.
+
+### 8. The commander's dashboard
+
+- Crew overview with status (normal, watch, critical), averages for sleep and activity, and live cards with each person's vitals.
+- Detail per astronaut: every metric against its range and a 7-day average, heart rate charts over 6 hours, 24 hours or 14 days, check-ins, contact history and news from home.
+- Proximity map, explorations feed, leaderboard, protocols (send one or write a new one), crew album, and the AI assistant described below.
+
+### 9. Ship mode and the chest light
+
+- **Ship mode.** Turn the wrist phone sideways and it becomes a glanceable HUD: big vitals, the next task, sensor links and the SOS button, readable while working.
+- **Chest light.** The vest's LED ring shows the pet's colour, pulses with each heartbeat and blends to red as heart rate climbs from 100 to 130 bpm, so crewmates can see stress without asking.
+
 | Today | Companion pet | Pet chat |
 |---|---|---|
 | <img src="docs/media/en-today.jpg" width="220"> | <img src="docs/media/en-pet.jpg" width="220"> | <img src="docs/media/en-chat.jpg" width="220"> |
