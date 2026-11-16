@@ -256,6 +256,16 @@ TypeScript across the stack · React Native with Expo (iOS, Android, web) · Nex
 
 ## Run it
 
+### Requirements
+
+- Node.js 20 or newer and npm (the repo is an npm workspace: `shared`, `hub`, `dashboard`, `mobile`)
+- Docker, optional, for the local pgvector database (`docker-compose.yml`); without it the hub keeps the knowledge index in memory
+- For the on-board assistant: the [npanj/llama.cpp](https://github.com/npanj/llama.cpp) fork built with Metal, an open-weight GGUF model, and `LLAMA_SERVER` / `ORBIT_MODEL` set as in [`.env.example`](.env.example)
+- For the crew app on a phone: Expo (Android or iOS); the web build runs in any browser
+- For the wearables: `arduino-cli` with the ESP32 core
+
+Copy `.env.example` to `.env`, then `npm install` at the root.
+
 ```bash
 npm run db         # local pgvector (Docker); optional, the hub falls back to memory
 npm run hub        # mission hub on :8790
@@ -266,6 +276,32 @@ npm run check      # contract self-checks
 ```
 
 The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds with `arduino-cli` for `esp32:esp32:esp32` (vest) and the XIAO ESP32-C3 (wrist band).
+
+## Repository structure
+
+```
+orbit-spaceapps/
+├── shared/      types, thresholds, messages and texts used by every part, with self-checks
+├── hub/         mission hub (Node): rules, emergencies, protocols, RAG, AI agent
+│   ├── kb/          NASA knowledge base (paraphrased, each file cites its source)
+│   └── scripts/     llm.sh (on-board model), sim.ts (crew simulator), ingest
+├── dashboard/   commander dashboard (Next.js)
+├── mobile/      crew app (Expo: Android, iOS, web)
+├── firmware/    ESP32 vest, wrist band and head band sketches
+├── hardware/    3D-printed enclosures: STL, STEP and GLB assemblies
+├── supabase/    database schema (pgvector)
+├── brand/       logo and lockup
+└── docs/        technical paper, architecture, conventions, media
+```
+
+## Privacy and ethics
+
+- **Data never leaves the habitat.** Vitals, check-ins and photos stay on the phones and the mission laptop. Every AI model runs locally; nothing is sent to a cloud service.
+- **The astronaut sees their own data first.** The phone shows each person their vitals, trends and insights; the commander sees crew status to keep everyone safe, which is how flight surgeons and crew already work.
+- **Mood is self-reported.** ORBIT does not guess emotions from a camera or microphone. The check-in is a short, voluntary self-report, as in NASA's isolation studies.
+- **The head-band camera only takes photos when the wearer asks**, and they go to a crew album everyone can see.
+- **No gamified vital signs.** Achievements reward habits (exercise, sleep, check-ins), never "good" blood pressure or oxygen, so nobody is pushed to hide symptoms.
+- **AI supports, it does not diagnose.** The assistant shows which data and NASA sources it used, and a crisis message from an astronaut is always answered by pointing to a human crewmate.
 
 ## Status and limits
 
@@ -279,6 +315,10 @@ The assistant needs a llama.cpp server on `:8080` (`LLM_URL`). Firmware builds w
 
 - **In the product:** a 1-bit Bonsai-4B model runs on the phone for the companion pet. Qwen3.8 Flash Next, served by a llama.cpp fork, powers the commander's assistant, which uses retrieval over the NASA knowledge base and tools to read crew data.
 - **In development:** the team used an AI coding assistant (Claude Code) to help write and review code across the repository. The idea, the hardware and all design decisions are the team's own. No AI-generated images or NASA branding are used.
+
+## Acknowledgements
+
+NASA Space Apps Challenge and the Mexicali local event organizers; CETYS Universidad; NASA's Human Research Program and the open NTRS archive, whose research forms the knowledge base; and the open-source projects listed under Tools.
 
 ## Team
 
