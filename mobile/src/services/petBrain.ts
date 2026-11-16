@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import type { LlamaContext } from 'llama.rn';
-import { METRIC_META, type MetricKey } from '@orbit/shared';
+import { METRIC_META, petTips, type MetricKey } from '@orbit/shared';
 import { ENV } from '../config/env';
 import { askPet } from './hub';
 import { PET_SYSTEM, petMessages, hasPhysicalRoleConfusion, type PetTurn } from '../domain/petPrompt';
@@ -150,13 +150,15 @@ export function ask(system: string, user: string, telemetry?: string, history: P
         jinja: true,
         enable_thinking: false,
         n_predict: 140,
-        temperature: 0.3,
+        temperature: 0.6, // 0.3 kept the 1-bit 4B model on one stock reply
+        penalty_repeat: 1.15,
         stop: ['<|im_end|>'],
       });
       lastLocalCompletion = { at: new Date().toISOString(), elapsedMs: Date.now() - completionBegan, tokens: r.tokens_predicted, tokensPerSecond: r.timings.predicted_per_second, test: false };
       await modelDiagnostic('local-response', Date.now() - completionBegan);
       const answer = r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
       if (telemetry != null && hasPhysicalRoleConfusion(answer)) return null;
+      if (history.some((m) => m.from === 'pet' && m.text === answer)) return null; // same reply again: let the hub or a scripted line answer
       return answer || null;
     } catch {
       return null;
@@ -204,7 +206,8 @@ function facts(): string {
     : 'sin check-in';
   const protocols = s.protocols.filter((p) => !s.done.includes(p.id)).map((p) => p.title);
   const source = s.dataSource === 'sim' ? 'Datos simulados (demo); no son mediciones de salud reales. ' : '';
-  return `${source}Signos: ${vitals.join(', ') || 'sin datos'}. Último check-in: ${checkin}. Protocolos activos: ${protocols.join('; ') || 'ninguno'}.`;
+  const tips = petTips(last, s.dataSource === 'ble' ? s.metrics.sleep : undefined); // simulated sleep must not drive advice
+  return `${source}Signos: ${vitals.join(', ') || 'sin datos'}. Último check-in: ${checkin}. Protocolos activos: ${protocols.join('; ') || 'ninguno'}. ${tips}`.trimEnd();
 }
 
 /** Fallback chain: on-device model, then the hub's pet brain, then canned replies. */

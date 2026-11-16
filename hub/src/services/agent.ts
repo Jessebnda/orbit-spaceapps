@@ -57,15 +57,23 @@ const MAX_ROUNDS = 4;
 const asText = (r: unknown) => (typeof r === 'string' ? r : JSON.stringify(r));
 const parseArgs = (s: string) => { try { return JSON.parse(s || '{}'); } catch { return {}; } };
 
+/** Thinking of the question being answered right now, polled by the dashboard while it waits. */
+export let liveThought = '';
+
 export async function ask(messages: { role: 'user' | 'assistant'; content: string }[], ctx: AgentCtx) {
   const convo: ChatMsg[] = [{ role: 'system', content: SYSTEM }, ...messages];
   const actions: { tool: string; args: unknown; result: string }[] = [];
+  const thoughts: string[] = []; // every round's thinking, shown in the dashboard
+  liveThought = '';
   for (let round = 0; round < MAX_ROUNDS; round++) {
     // last round: no tools, so the model must answer with what it already gathered
     const last = round === MAX_ROUNDS - 1;
-    const msg = await chat(last ? [...convo, { role: 'user', content: 'Responde ya con los datos que tienes.' }] : convo, last ? undefined : TOOLS);
+    const msg = await chat(last ? [...convo, { role: 'user', content: 'Responde ya con los datos que tienes.' }] : convo, last ? undefined : TOOLS, true, (t) => { liveThought += t; });
+    liveThought += '\n\n';
+    if (msg.reasoning) thoughts.push(msg.reasoning);
+    const reasoning = thoughts.join('\n\n') || undefined;
     const calls = msg.tool_calls ?? [];
-    if (!calls.length) return { reply: msg.content ?? '', actions };
+    if (!calls.length) return { reply: msg.content ?? '', actions, reasoning };
     convo.push({ role: 'assistant', content: msg.content, tool_calls: calls });
     for (const [i, call] of calls.entries()) {
       const args = parseArgs(call.function.arguments);
@@ -74,7 +82,7 @@ export async function ask(messages: { role: 'user' | 'assistant'; content: strin
       convo.push({ role: 'tool', tool_call_id: call.id ?? `${round}-${i}`, content: asText(result) });
     }
   }
-  return { reply: 'No he podido cerrar el análisis; prueba con una pregunta más concreta.', actions };
+  return { reply: 'No he podido cerrar el análisis; prueba con una pregunta más concreta.', actions, reasoning: thoughts.join('\n\n') || undefined };
 }
 
 const PET_SYSTEM = 'Eres un mentor psicológico cálido para un astronauta en una misión espacial. Responde en español, en como máximo 3 frases, sin diagnósticos. Si percibes riesgo (desesperanza, pánico intenso, pensamientos de hacerse daño), pide que avise al equipo médico.';

@@ -41,6 +41,7 @@ export const ANDROID = {
   'location': 'navigate-outline',
   'cross.case.fill': 'medkit',
   'figure.run': 'walk',
+  'camera.fill': 'camera',
   'brain.head.profile': 'bulb-outline',
   'heart.text.clipboard': 'clipboard-outline',
   'figure.mind.and.body': 'body-outline',

@@ -14,3 +14,6 @@ mobile/android/
 
 # Expo web export (served from the captain Mac)
 mobile/dist-web/
+
+# Crew album photos (hub)
+hub/photos/

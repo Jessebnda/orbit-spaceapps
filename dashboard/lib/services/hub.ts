@@ -28,5 +28,5 @@ export interface HistoryPoint { ts: number; metrics: Metrics }
 export type { CommsRecord as CommsRow, CommsResponse } from "@orbit/shared";
 export type { LeaderRow, Exploration } from "@orbit/shared"; // one contract with the hub
 export interface Action { tool: string; args: Record<string, unknown>; result?: unknown }
-export interface ChatMsg { role: "user" | "assistant"; content: string; actions?: Action[] }
+export interface ChatMsg { role: "user" | "assistant"; content: string; actions?: Action[]; reasoning?: string }
 export type LlmState = { state: "off" | "starting" | "ready" };

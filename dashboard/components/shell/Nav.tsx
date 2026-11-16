@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleCheck, ClipboardList, LayoutDashboard, MessageSquare, Route, Trophy, TriangleAlert, WifiOff, type LucideIcon } from "lucide-react";
+import { CircleCheck, ClipboardList, LayoutDashboard, MessageSquare, Route, Trophy, TriangleAlert, WifiOff, type LucideIcon, Camera } from "lucide-react";
 import { useHub } from "@/lib/services/useHub";
 import { useNow } from "@/lib/services/useNow";
 import { fmtAgo } from "@/lib/domain/format";
@@ -21,6 +21,7 @@ const GROUPS: { label: string; links: { href: string; label: string; icon: Lucid
     links: [
       { href: "/logros", label: "Logros", icon: Trophy },
       { href: "/exploracion", label: "Exploración", icon: Route },
+      { href: "/album", label: "Álbum", icon: Camera },
     ],
   },
 ];

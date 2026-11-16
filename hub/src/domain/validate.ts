@@ -25,6 +25,7 @@ export function parse(text: string): ClientMsg | null {
       case 'sos': return isStr(m.crewId) && EMERGENCY_KINDS.includes(m.kind);
       case 'protocol_ack': return isStr(m.crewId) && isStr(m.protocolId);
       case 'resolve': return isStr(m.emergencyId);
+      case 'photo': return isStr(m.crewId) && isNum(m.ts) && isStr(m.jpeg) && m.jpeg.length < 1_500_000;
       default: return false;
     }
   })();

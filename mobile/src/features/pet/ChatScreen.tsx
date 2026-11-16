@@ -25,7 +25,7 @@ function Dot({ i }: { i: number }) {
 /** Conversación con Orbi: burbujas, avatar solo al inicio de cada bloque, hora cada 15 min, compositor pegado al teclado. */
 export function ChatScreen() {
   const chat = useStore((s) => s.chat);
-  const { metrics, checkins } = useStore();
+  const { metrics, checkins, care } = useStore();
   const header = useHeaderHeight();
   const tabHeight = useTabInset();
   const [keyboard, setKeyboard] = useState(false);
@@ -84,7 +84,7 @@ export function ChatScreen() {
             <View>
               {!older || gap ? <Text style={{ ...font('small', color.faint), fontSize: 11, textAlign: 'center', paddingVertical: 8 }}>{new Date(m.ts).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</Text> : null}
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, justifyContent: mine ? 'flex-end' : 'flex-start', marginTop: firstOfBlock ? 8 : 0 }}>
-                {!mine ? <View style={{ width: 28, height: 28, overflow: 'hidden', opacity: firstOfBlock ? 1 : 0 }}><Creature size={28} mood={petMood(metrics, checkins[checkins.length - 1])} /></View> : null}
+                {!mine ? <View style={{ width: 28, height: 28, overflow: 'hidden', opacity: firstOfBlock ? 1 : 0 }}><Creature size={28} mood={petMood(metrics, checkins[checkins.length - 1], care)} /></View> : null}
                 <View style={{ maxWidth: '78%', backgroundColor: mine ? color.accent : color.raised, borderRadius: 18, borderCurve: 'continuous', ...(mine ? { borderBottomRightRadius: 4 } : { borderBottomLeftRadius: 4 }), paddingHorizontal: 14, paddingVertical: 10 }}>
                   <Text style={font('body', mine ? color.onAccent : color.text)} selectable>{m.text}</Text>
                 </View>

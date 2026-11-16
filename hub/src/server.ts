@@ -6,7 +6,7 @@ import { onConnection } from './routes/ws';
 import { broadcast } from './services/hub';
 
 const server = createServer(handleHttp);
-const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 1536 * 1024 });
 
 // Only /ws is a WebSocket endpoint; other upgrades are refused.
 server.on('upgrade', (req, socket, head) => {

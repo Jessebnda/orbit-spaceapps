@@ -33,13 +33,40 @@ export const PET_COLORS = {
 export type PetShape = keyof typeof PET_SHAPES;
 export type PetColor = keyof typeof PET_COLORS;
 
+const BERRY = 30;
+const MOUTH_Y = 0.63; // mouth height in the 200 frame (y 126)
+
+/** Thrown snack: rises from below, arcs over and drops into the mouth. */
+function Berry({ t, size }: { t: { get: () => number }; size: number }) {
+  const s = useAnimatedStyle(() => {
+    const v = t.get();
+    const y = size + (size * MOUTH_Y - size) * v - Math.sin(Math.PI * v) * size * 0.55;
+    return { opacity: v > 0 && v < 1 ? 1 : 0, transform: [{ translateX: (1 - v) * size * 0.2 - BERRY / 2 }, { translateY: y - BERRY / 2 }, { scale: 1 - 0.55 * v }, { rotate: `${v * 540}deg` }] };
+  });
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: size / 2, top: 0 }, s]}>
+      <Svg width={BERRY} height={BERRY} viewBox="0 0 30 30">
+        <Circle cx={15} cy={17} r={11} fill="#E8546B" />
+        <Circle cx={11} cy={13} r={3} fill="#FFFFFF" fillOpacity={0.45} />
+        <Path d="M15 6 Q19 1 25 3 Q21 8 15 6 Z" fill="#6CC28C" />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+function Crumb({ i, t, size }: { i: number; t: { get: () => number }; size: number }) {
+  const a = -Math.PI / 2 + (i - 2) * 0.7;
+  const s = useAnimatedStyle(() => ({ opacity: t.get() > 0 && t.get() < 1 ? 1 - t.get() : 0, transform: [{ translateX: Math.cos(a) * 34 * t.get() }, { translateY: Math.sin(a) * 26 * t.get() + 18 * t.get() * t.get() }] }));
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: size / 2 - 3, top: size * MOUTH_Y - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: i % 2 ? '#E8546B' : '#F5C1B3' }, s]} />;
+}
+
 function Heart({ i, t }: { i: number; t: { get: () => number } }) {
   const s = useAnimatedStyle(() => ({ opacity: t.get() > 0 ? 1 - t.get() : 0, transform: [{ translateY: -24 * t.get() }, { translateX: (i - 1) * 18 }] }));
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: '20%', alignSelf: 'center' }, s]}><Icon name="heart.fill" size={14} color={color.accent} /></Animated.View>;
 }
 
 /** Orbi: astronauta-bellota hecha de capas SVG. Estado = forma (ojos, párpados, antena, brazos), no solo la boca. Respira y parpadea en el hilo de UI; al tocarla rebota y suelta corazones. */
-export function Creature({ size = 200, mood = 'happy', interactive = false, shape, tint }: { size?: number; mood?: PetMood; interactive?: boolean; shape?: PetShape; tint?: PetColor }) {
+export function Creature({ size = 200, mood = 'happy', interactive = false, shape, tint, onPoke, feeds = 0, pets = 0 }: { size?: number; mood?: PetMood; interactive?: boolean; shape?: PetShape; tint?: PetColor; onPoke?: () => void; /** Bump to play the feeding toss. */ feeds?: number; /** Bump to play the petting bounce, as a tap does. */ pets?: number }) {
   const profile = useStore((s) => s.profile);
   const outline = PET_SHAPES[shape ?? (profile.petShape as PetShape)] ?? PET_SHAPES.bellota;
   const suit = (PET_COLORS[tint ?? (profile.petColor as PetColor)] ?? PET_COLORS.blanco).fill;
@@ -47,6 +74,11 @@ export function Creature({ size = 200, mood = 'happy', interactive = false, shap
   const breathe = useSharedValue(0);
   const jump = useSharedValue(0);
   const hearts = useSharedValue(0);
+  const toss = useSharedValue(0);
+  const chew = useSharedValue(0);
+  const crumbs = useSharedValue(0);
+  const fedSeen = useRef(feeds);
+  const petSeen = useRef(pets);
   const lid = useSharedValue(mood === 'tired' ? 10 : 0);
   const last = useRef(0);
   const base = mood === 'tired' ? 10 : 0;
@@ -68,23 +100,49 @@ export function Creature({ size = 200, mood = 'happy', interactive = false, shap
     return () => clearTimeout(id);
   }, [base, lid, reduced]);
 
+  useEffect(() => {
+    if (feeds === fedSeen.current) return;
+    fedSeen.current = feeds;
+    const catchAt = reduced ? 0 : 650;
+    const id = setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), catchAt);
+    hearts.set(0);
+    hearts.set(withDelay(catchAt + 250, withTiming(1, { duration: 600 })));
+    if (reduced) return () => clearTimeout(id);
+    toss.set(0);
+    toss.set(withTiming(1, { duration: catchAt, easing: Easing.out(Easing.quad) }));
+    chew.set(withDelay(catchAt, withSequence(withTiming(1, { duration: 90 }), withTiming(0, { duration: 90 }), withTiming(1, { duration: 90 }), withTiming(0, { duration: 140 }))));
+    crumbs.set(0);
+    crumbs.set(withDelay(catchAt, withTiming(1, { duration: 520 })));
+    return () => clearTimeout(id);
+  }, [feeds, reduced, hearts, toss, chew, crumbs]);
+
   const body = useAnimatedStyle(() => ({
     transform: [
       { translateY: -2 * breathe.get() + jump.get() * -14 },
-      { scaleY: 1 + 0.035 * breathe.get() - (mood === 'sad' ? 0.06 : 0) },
+      { scaleX: 1 + 0.07 * chew.get() },
+      { scaleY: 1 + 0.035 * breathe.get() - (mood === 'sad' ? 0.06 : 0) - 0.08 * chew.get() },
     ],
   }));
   const lidProps = useAnimatedProps(() => ({ height: lid.get() }));
 
-  const poke = () => {
-    const now = Date.now();
-    if (now - last.current < 450) return;
-    last.current = now;
+  const cheer = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     hearts.set(0);
     hearts.set(withTiming(1, { duration: 600 }));
     if (!reduced) jump.set(withSequence(withTiming(0, { duration: 90 }), withSpring(1, { duration: 400, dampingRatio: 0.8 }), withDelay(60, withSpring(0, { duration: 400, dampingRatio: 0.8 }))));
   };
+  const poke = () => {
+    const now = Date.now();
+    if (now - last.current < 450) return;
+    last.current = now;
+    onPoke?.();
+    cheer();
+  };
+  useEffect(() => {
+    if (pets === petSeen.current) return;
+    petSeen.current = pets;
+    cheer();
+  }, [pets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mouth = mood === 'happy' ? 'M88 124 Q100 136 112 124' : mood === 'sad' ? 'M91 130 Q100 122 109 130' : 'M93 127 L107 127';
   const armRot = mood === 'happy' ? 24 : mood === 'sad' ? -6 : 0;
@@ -120,8 +178,12 @@ export function Creature({ size = 200, mood = 'happy', interactive = false, shap
   );
   if (!interactive) return art;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel="Orbi" accessibilityHint="Tócala para saludar" onPress={poke}>
-      <View>{art}</View>
-    </Pressable>
+    <View>
+      <Pressable accessibilityRole="button" accessibilityLabel="Orbi" accessibilityHint="Tócala para hacerle cariño" onPress={poke}>
+        <View>{art}</View>
+      </Pressable>
+      <Berry t={toss} size={size} />
+      {[0, 1, 2, 3, 4].map((i) => <Crumb key={i} i={i} t={crumbs} size={size} />)}
+    </View>
   );
 }

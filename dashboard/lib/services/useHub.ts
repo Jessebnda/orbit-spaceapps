@@ -12,6 +12,7 @@ function useHubSocket() {
   const [snap, setSnap] = useState<{ crew: CrewSnapshot[]; emergencies: Emergency[] } | null>(null);
   const [connected, setConnected] = useState(false);
   const [lastAt, setLastAt] = useState(0);
+  const [photoAt, setPhotoAt] = useState(0);
 
   useEffect(() => {
     let sock: WebSocket | undefined;
@@ -32,6 +33,8 @@ function useHubSocket() {
         setLastAt(Date.now());
         if (m.t === "snapshot") {
           setSnap({ crew: m.crew, emergencies: m.emergencies });
+        } else if (m.t === "photo") {
+          setPhotoAt(Date.now());
         } else if (m.t === "emergency") {
           setSnap((s) => s && { ...s, emergencies: [...s.emergencies.filter((x) => x.id !== m.emergency.id), m.emergency] });
         }
@@ -52,7 +55,7 @@ function useHubSocket() {
     };
   }, []);
 
-  return { crew: snap?.crew ?? [], emergencies: snap?.emergencies ?? [], loaded: snap !== null, connected, lastAt };
+  return { crew: snap?.crew ?? [], emergencies: snap?.emergencies ?? [], loaded: snap !== null, connected, lastAt, photoAt };
 }
 
 type HubState = ReturnType<typeof useHubSocket>;

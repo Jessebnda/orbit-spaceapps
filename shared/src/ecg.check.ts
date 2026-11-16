@@ -7,6 +7,8 @@ function check(v: boolean, m: string) { if (!v) throw new Error(m); }
 const full = parseSensorLine('22146,1877,48.1,1,-2.58,-0.60,0.01,0.081,-0.408,8.970,24.39');
 check(full?.t === 22146 && full.ecg === 48.1 && full.leadsOn && full.temp === 24.39 && full.accel?.z === 8.97 && full.angle?.x === -2.58, 'full line parses');
 const ecgOnly = parseSensorLine('22166,1885,66.0,1,,,,,,,');
+const noTemp = parseSensorLine('10364357,4095,nan,nan,0,-2.82,-3.03,0.00,0.481,-0.432,9.009,nan'); // GY-906 missing
+check(noTemp?.accel?.z === 9.009 && noTemp.temp === undefined && noTemp.angle?.x === -2.82, 'temp nan keeps the IMU');
 check(ecgOnly?.ecg === 66 && ecgOnly.temp === undefined && ecgOnly.accel === undefined, 'ECG-only line has no IMU or temperature');
 check(parseSensorLine('22166,1885,66.0,0,,,,,,,')?.leadsOn === false, 'leads 0 = electrode off');
 check(parseSensorLine('') === null && parseSensorLine('t,ecg') === null && parseSensorLine('22146,18') === null && parseSensorLine('a,b,c,d') === null, 'blank, header, truncated and non-numeric lines are dropped');

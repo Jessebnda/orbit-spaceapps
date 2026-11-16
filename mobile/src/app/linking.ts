@@ -10,7 +10,8 @@ export const linking: LinkingOptions<RootParamList> = {
         screens: {
           Hoy: { screens: { Hoy: 'hoy' } },
           Mascota: { screens: { Mascota: 'mascota', Chat: 'chat' } },
-          Protocolos: { screens: { Protocolos: 'protocolos', ProtocolDetail: 'protocolo/:id' } },
+          // reload on /protocolo/x keeps the list underneath, so back has somewhere to go (cast: the typed config rejects nested initialRouteName)
+          Protocolos: { initialRouteName: 'Protocolos' as never, screens: { Protocolos: 'protocolos', ProtocolDetail: 'protocolo/:id' } },
           Juego: { screens: { Juego: 'juego' } },
           Yo: { screens: { Yo: 'yo', Ajustes: 'ajustes', Logros: 'logros' } },
         },

@@ -1,9 +1,11 @@
 import type { ComponentType } from 'react';
+import { Platform } from 'react-native';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { color } from '../theme';
 import { Icon } from '../components/ui/Icon';
 import { Press } from '../components/ui/Press';
 import { SosButton } from '../components/ui/SosButton';
+import { PhotoButton } from '../features/camera/PhotoButton';
 import { GameScreen } from '../features/game/GameScreen';
 import { ChatScreen } from '../features/pet/ChatScreen';
 import { PetScreen } from '../features/pet/PetScreen';
@@ -29,7 +31,8 @@ const base: NativeStackNavigationOptions = {
   headerTintColor: color.accent,
   headerLargeStyle: { backgroundColor: color.bg },
 };
-const pushed: NativeStackNavigationOptions = { headerLargeTitleEnabled: false, headerTransparent: true, headerBlurEffect: 'systemChromeMaterialDark', headerTintColor: color.accent };
+// web: the JS header drawn transparent over the page lost its back arrow, so it stays solid there
+const pushed: NativeStackNavigationOptions = { headerLargeTitleEnabled: false, headerTransparent: Platform.OS !== 'web', headerBlurEffect: 'systemChromeMaterialDark', headerTintColor: color.accent };
 
 function CheckInButton({ nav }: { nav: Nav }) {
   return (
@@ -54,6 +57,7 @@ function page(title: string, component: ComponentType, opts: (nav: Nav) => Nativ
 export const HoyPage = page('Hoy', TodayScreen, (nav) => ({
   headerRight: () => (
     <>
+      <PhotoButton />
       <CheckInButton nav={nav} />
       <SosButton />
     </>

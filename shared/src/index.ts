@@ -85,6 +85,8 @@ export * from './design'; // design tokens + STATUS_COLOR
 export * from './labels';
 export * from './insights';
 export * from './ecg';
+export * from './petTips';
+export * from './jumps';
 
 /* ───────────── BLE spec (for the firmware team) ─────────────
  * Each ESP32 advertises its name as `ORB-<crewId>-<device>` (e.g. ORB-c2-vest) so any phone can
@@ -127,7 +129,7 @@ export interface Protocol {
   steps: string[];
   durationMin?: number;
   /** Emergency protocols carry the CPR/AED guide flag so the app shows the animated guide. */
-  guide?: 'cpr' | 'breathing' | 'jumping_jacks';
+  guide?: 'cpr' | 'breathing' | 'jumping_jacks' | 'reaction';
   createdBy: 'rules' | 'ai' | 'captain';
 }
 
@@ -202,6 +204,8 @@ export type CommsResponse = { records: CommsRecord[] } & CrewSnapshot['comms'];
 /** GET /api/leaderboard rows (hub → dashboard). */
 export interface LeaderRow { member: { id: string; name: string }; xp: number; achievements: string[] }
 /** GET /api/explorations rows (hub → dashboard). */
+export interface CrewPhoto { id: string; crewId: string; name: string; ts: number } // image at /api/photos/<id>.jpg
+
 export interface Exploration { crewId: string; name: string; ts: number; event: Extract<StatEvent, { type: 'exploration' }> }
 
 /** Mission achievements. The phone unlocks them and sends a `stat` achievement event; the hub sums XP for the leaderboard. */
@@ -237,14 +241,16 @@ export type ClientMsg =
   | { t: 'pet_chat'; crewId: string; text: string }
   | { t: 'sos'; crewId: string; kind: EmergencyKind }                  // manual panic button
   | { t: 'protocol_ack'; crewId: string; protocolId: string }
-  | { t: 'resolve'; emergencyId: string };
+  | { t: 'resolve'; emergencyId: string }
+  | { t: 'photo'; crewId: string; ts: number; jpeg: string };          // base64 JPEG from the helmet camera, stored by the hub for the crew album
 
 export type HubMsg =
   | { t: 'protocol'; crewId: string; protocol: Protocol }
   | { t: 'emergency'; emergency: Emergency }
   | { t: 'pet_reply'; crewId: string; text: string }
   | { t: 'snapshot'; crew: CrewSnapshot[]; emergencies: Emergency[] }    // captain only
-  | { t: 'self'; snapshot: CrewSnapshot; crew: CrewMember[] };          // own data + roster so phones show names, not ids                              // to each crew phone, every few seconds
+  | { t: 'self'; snapshot: CrewSnapshot; crew: CrewMember[] }
+  | { t: 'photo'; photo: CrewPhoto };                                   // new album photo, to every phone and captain          // own data + roster so phones show names, not ids                              // to each crew phone, every few seconds
 
 export const HARD_NEWS_MS = 14 * 86_400_000;
 export const hardNewsActive = (s: Pick<CrewSnapshot, 'hardNews'>, now = Date.now()) => s.hardNews != null && now - s.hardNews < HARD_NEWS_MS;

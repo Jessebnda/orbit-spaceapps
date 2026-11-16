@@ -11,20 +11,34 @@ export const dayKey = (ts: number) => {
 
 export type PetMood = 'happy' | 'tired' | 'sad';
 
-/** The pet mirrors the user: check-in or a critical metric makes it sad, short sleep makes it tired. */
-export function petMood(metrics: Metrics, last?: CheckIn): PetMood {
-  if ((last && (last.mood <= 2 || last.stress >= 4)) || worstStatus(metrics) === 'critical') return 'sad';
-  if ((metrics.sleep ?? 8) < 6) return 'tired';
-  return 'happy';
-}
+/** Last time each need was met; a need empties over its own window, so Orbi asks for care like a tamagotchi. */
+export type Care = { fed: number; petted: number; talked: number };
+export const CARE_WINDOW: Care = { fed: 8 * 3_600_000, petted: 6 * 3_600_000, talked: 12 * 3_600_000 };
 
-/** Need bars 0..1, read from the user's own data. */
-export function petNeeds(metrics: Metrics, last?: CheckIn) {
-  return {
-    food: Math.min(1, (metrics.kcal ?? 0) / 2000),
-    rest: Math.min(1, (metrics.sleep ?? 0) / 8),
-    mood: last ? last.mood / 5 : 0.6,
-  };
+/** Every need at 50 %: Orbi starts asking for care right away. */
+export const halfCare = (now = Date.now()): Care => ({ fed: now - CARE_WINDOW.fed / 2, petted: now - CARE_WINDOW.petted / 2, talked: now - CARE_WINDOW.talked / 2 });
+
+/** Need levels 0..1. */
+export const careLevels = (c: Care, now = Date.now()) => ({
+  fed: Math.max(0, 1 - (now - c.fed) / CARE_WINDOW.fed),
+  petted: Math.max(0, 1 - (now - c.petted) / CARE_WINDOW.petted),
+  talked: Math.max(0, 1 - (now - c.talked) / CARE_WINDOW.talked),
+});
+
+/** One feed or pet fills a tenth of the need; talking fills it (it also marks the low day as talked through). */
+export const careStep = (c: Care, k: keyof Care, now = Date.now()): number =>
+  k === 'talked' ? now : Math.min(now, Math.max(c[k], now - CARE_WINDOW[k]) + CARE_WINDOW[k] / 10);
+
+/** The user said they feel low and hasn't talked with Orbi since: Orbi stays sad until they do. */
+export const needsTalk = (last: CheckIn | undefined, care: Care) => !!last && (last.mood <= 2 || last.stress >= 4) && care.talked < last.ts;
+
+/** The pet mirrors the user and its own care: a low check-in not yet talked through, a critical metric or a need left empty makes it sad; short sleep or hunger makes it tired. */
+export function petMood(metrics: Metrics, last?: CheckIn, care?: Care, now = Date.now()): PetMood {
+  const lv = care && careLevels(care, now);
+  const userLow = care ? needsTalk(last, care) : !!last && (last.mood <= 2 || last.stress >= 4);
+  if (userLow || worstStatus(metrics) === 'critical' || (lv && Math.min(lv.fed, lv.petted, lv.talked) === 0)) return 'sad';
+  if ((metrics.sleep ?? 8) < 6 || (lv && lv.fed < 0.25)) return 'tired';
+  return 'happy';
 }
 
 /** Consecutive local days with a check-in, ending today. */

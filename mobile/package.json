@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "check:domain": "npx --yes tsx src/domain/derive.check.ts && npx --yes tsx src/domain/achievements.check.ts && npx --yes tsx src/domain/game.check.ts",
     "web:build": "expo export -p web --output-dir dist-web",
-    "web:serve": "python3 -m http.server 8083 --bind 0.0.0.0 --directory dist-web"
+    "web:serve": "node scripts/serve-web.mjs"
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^1.5.0",

@@ -18,6 +18,8 @@ import { StatusMark } from '../../components/ui/StatusMark';
 import { CprGuide } from '../emergency/CprGuide';
 import { Breathing } from './Breathing';
 import { JumpingJacks } from './JumpingJacks';
+import { Reaction } from './Reaction';
+import { dayKey } from '../../domain/derive';
 
 const KINDS: ProtocolKind[] = ['emergency', 'physical', 'mental'];
 const TONE = { emergency: 'critical', physical: 'accent', mental: 'muted' } as const;
@@ -29,6 +31,13 @@ const KIND_ICON: Record<ProtocolKind, { name: IconName; ink: string }> = {
 type Nav = { navigate: (n: string, p?: object) => void; goBack: () => void };
 
 const DRILL: Protocol = { id: 'drill-cpr', kind: 'emergency', title: 'Simulacro de RCP', reason: 'Práctica sin emergencia real.', steps: ['Llama al AED', 'Compresiones a 110/min', 'Ventilaciones cada 30'], createdBy: 'captain', guide: 'cpr' };
+/** Daily training, local to the phone: done is stored per day as `<id>@<day>`, so each one comes back tomorrow. */
+const DAILY: Record<string, Protocol & { icon: IconName }> = {
+  'daily-physical': { id: 'daily-physical', icon: 'figure.run', kind: 'physical', title: 'Prueba física: 5 saltos', reason: 'La IMU del pecho (esp sensores) cuenta los saltos.', guide: 'jumping_jacks', createdBy: 'rules', steps: ['Ponte el chaleco (esp sensores, en el pecho) y ajusta las correas.', 'Pulsa Empezar y quédate quieto un segundo.', 'Haz 5 saltos en el mismo lugar, con las manos quietas en la cintura (la banda de la mano casi no debe moverse).'] },
+  'daily-mental': { id: 'daily-mental', icon: 'brain.head.profile', kind: 'mental', title: 'Prueba mental: reacción', reason: 'Cinco intentos de tiempo de reacción, como la prueba de vigilancia de NASA.', guide: 'reaction', createdBy: 'rules', steps: ['Busca un lugar sin distracciones.', 'Haz los 5 intentos: toca en cuanto se ponga verde.'] },
+  drill: { ...DRILL, icon: 'heart.text.square' },
+};
+const todayId = (id: string) => `${id}@${dayKey(Date.now())}`;
 
 /** Protocolos de la nave por tipo. Detalle = push nativo. */
 export function ProtocolsScreen() {
@@ -64,6 +73,12 @@ export function ProtocolsScreen() {
           </Card>
         ) : null}
 
+        <FormSection title="Entrenamiento de hoy" hint="Se renueva cada día.">
+          {Object.entries(DAILY).map(([id, d], i, all) => (
+            <FeedRow key={id} icon={d.icon} iconColor={done.includes(todayId(id)) ? color.status.ok : color.accent} title={d.title} badge={done.includes(todayId(id)) ? 'Hecho' : undefined} badgeTone="ok" last={i === all.length - 1} onPress={() => open(id)} />
+          ))}
+        </FormSection>
+
         <SegmentedTabs tabs={KINDS.map((k) => ({ key: k, label: PROTOCOL_KIND_LABEL[k] }))} active={kind} onChange={setKind} />
 
         {list.length === 0 ? (
@@ -88,11 +103,6 @@ export function ProtocolsScreen() {
           </FormSection>
         )}
 
-        {kind === 'emergency' ? (
-          <FormSection title="Entrenamiento" hint="Practica la guía sin emergencia real.">
-            <FeedRow icon="heart.text.square" iconColor={color.accent} title="Simulacro de RCP" last onPress={() => open('drill')} />
-          </FormSection>
-        ) : null}
       </View>
     </ScrollView>
   );
@@ -108,8 +118,9 @@ export function ProtocolDetailScreen() {
   const tabBar = useTabInset(); // iOS native tab bar overlays this pushed screen; Android's does not
   const [footer, setFooter] = useState(110);
   const drill = params.id === 'drill';
+  const daily = DAILY[params.id];
   const stored = useStore((s) => s.protocols.find((x) => x.id === params.id));
-  const p = drill ? DRILL : stored;
+  const p = daily ?? stored;
   const checked = useStore((s) => s.checked[params.id] ?? NONE);
   const [secs, setSecs] = useState((p?.durationMin ?? 0) * 60);
   const [timer, setTimer] = useState(false);
@@ -135,9 +146,11 @@ export function ProtocolDetailScreen() {
   const missing = p.steps.length - checked.length;
   const toggle = (i: number) => useStore.getState().setChecked(p.id, checked.includes(i) ? checked.filter((x) => x !== i) : [...checked, i]);
   const finish = () => {
-    if (drill) {
-      useStore.getState().addStat('cprDrills', 1);
-      useStore.getState().showToast('Simulacro registrado');
+    if (daily) {
+      if (drill) useStore.getState().addStat('cprDrills', 1);
+      useStore.getState().markDone(todayId(params.id));
+      sendStat({ type: 'protocol_done', protocolId: todayId(params.id) });
+      useStore.getState().showToast(drill ? 'Simulacro registrado' : 'Prueba de hoy registrada');
     } else {
       useStore.getState().markDone(p.id);
       send({ t: 'protocol_ack', crewId: useStore.getState().profile.crewId, protocolId: p.id });
@@ -190,13 +203,14 @@ export function ProtocolDetailScreen() {
 
         {focused && p.guide === 'breathing' ? <Card><Breathing /></Card> : null}
         {focused && p.guide === 'jumping_jacks' ? <Card><JumpingJacks /></Card> : null}
+        {focused && p.guide === 'reaction' ? <Card><Reaction /></Card> : null}
         {focused && (p.guide === 'cpr' || drill) ? <Card><CprGuide /></Card> : null}
       </ScrollView>
 
       <View onLayout={(e) => setFooter(e.nativeEvent.layout.height)} style={{ position: 'absolute', left: 0, right: 0, bottom: tabBar, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: color.bg, gap: 6 }}>
         {missing > 0 ? <Text style={{ ...font('small', color.muted), textAlign: 'center' }}>Faltan {missing} paso{missing > 1 ? 's' : ''}</Text> : null}
-        <Press label={drill ? 'Registrar simulacro' : 'Marcar como hecho'} disabled={missing > 0} onPress={finish} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={font('button', color.onAccent)}>{drill ? 'Registrar simulacro' : 'Marcar como hecho'}</Text>
+        <Press label={daily ? 'Registrar' : 'Marcar como hecho'} disabled={missing > 0} onPress={finish} style={{ height: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={font('button', color.onAccent)}>{drill ? 'Registrar simulacro' : daily ? 'Registrar prueba de hoy' : 'Marcar como hecho'}</Text>
         </Press>
       </View>
     </View>

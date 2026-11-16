@@ -1,4 +1,5 @@
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import { ENV } from '../config/env';
 import * as Haptics from 'expo-haptics';
 import { ACHIEVEMENTS } from '@orbit/shared';
 import { newlyUnlocked } from '../domain/achievements';
@@ -36,6 +37,8 @@ export function startRuntime() {
   if (started) return;
   started = true;
   const go = () => {
+    // Web visitors are always demo crew on this page's own hub; a stale saved source or URL left them with no data.
+    if (Platform.OS === 'web') useStore.setState({ dataSource: 'sim', hubUrl: ENV.hubUrl });
     useStore.subscribe(checkAchievements);
     useStore.subscribe((s, p) => {
       if (s.profile !== p.profile || s.hubUrl !== p.hubUrl) hub.restart();

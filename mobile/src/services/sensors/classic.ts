@@ -3,6 +3,17 @@ import { Platform } from 'react-native';
 import type { BluetoothDevice } from 'react-native-bluetooth-classic';
 import { useStore } from '../../store/store';
 import { vitalsDecoder } from './decoder';
+import { PET_COLORS, type PetColor } from '../../features/pet/Creature';
+
+/** "C,r,g,b": the vest LED strip paints Orbi's colour (the firmware saturates it and blends to red as the pulse rises). */
+const colorLine = () => {
+  const hex = PET_COLORS[(useStore.getState().profile.petColor ?? 'blanco') as PetColor].fill;
+  return `C,${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',')}\n`;
+};
+const sendColor = (dev: BluetoothDevice) => {
+  console.log('[bt] color mascota', useStore.getState().profile.petColor ?? 'blanco', colorLine().trim());
+  void dev.write(colorLine()).catch(() => {});
+};
 
 // Classic Bluetooth (SPP / BluetoothSerial) for wearables already paired in Android settings.
 // shortcut: Android only, iOS has no SPP; move the firmware to BLE (firmware/esp32_orbit/orbit_ble_csv.h) for iPhone.
@@ -42,6 +53,7 @@ function syncer(name: string, dev: BluetoothDevice) {
 }
 
 let active = false;
+let unsubColor: (() => void) | null = null;
 let onM: (m: Metrics) => void = () => {};
 let retry: ReturnType<typeof setTimeout> | null = null;
 const links = new Map<string, { dev: BluetoothDevice; sub: { remove(): void }; device?: Device }>();
@@ -88,11 +100,13 @@ async function connectAll() {
         let raw = 3;
         const sub = dev.onDataReceived((e) => {
           if (e.data.startsWith('S,')) return sync.reply(e.data);
+          if (e.data.startsWith('LED,')) return console.log('[bt]', d.name, e.data.trim());
           if (raw > 0 && raw--) console.log('[bt] linea', d.name, e.data);
           decode(`${e.data}\n`);
         });
         link.sub = { remove: () => { sync.stop(); sub.remove(); } };
         links.set(d.address, link);
+        sendColor(dev);
       } catch (e) {
         console.warn('[bt] no conecta', d.name, (e as Error)?.message); // busy with another app, off, or out of range
       }
@@ -116,10 +130,15 @@ export const classic = {
     onM = onMetrics;
     if (active) return;
     active = true;
+    unsubColor = useStore.subscribe((s, prev) => {
+      if (s.profile.petColor !== prev.profile.petColor) for (const l of links.values()) sendColor(l.dev);
+    });
     void connectAll();
   },
   stop() {
     active = false;
+    unsubColor?.();
+    unsubColor = null;
     if (retry) clearTimeout(retry);
     retry = null;
     for (const l of links.values()) {

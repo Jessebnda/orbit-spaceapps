@@ -11,8 +11,24 @@ let ecgHrAt = 0; // shared by every link: when the ECG last produced a pulse
 let lastR: number | undefined; // newest unpaired chest R peak, phone ms (performance.now)
 let ptts: number[] = []; // last accepted beats, for a median that ignores the odd false wrist peak
 let bpAt = 0;
+let imuLogAt = 0;
+
+type Accel = { x: number; y: number; z: number };
+let imuListener: ((tMs: number, a: Accel, from: Device) => void) | null = null;
+/** Raw wearable accelerometer (m/s², gravity included), every IMU line, before the UI throttle. Returns the unsubscribe. */
+export function onImu(fn: (tMs: number, a: Accel, from: Device) => void) {
+  imuListener = fn;
+  return () => { if (imuListener === fn) imuListener = null; };
+}
+let hrPaused = false;
+/** While a jump test runs: motion artefacts make the ECG/PPG pulse jump, so hr is dropped and the last good value stays. */
+export const pauseHr = (on: boolean) => { hrPaused = on; };
+
 /** True while blood pressure is being estimated from real beats, so the mock stays quiet. */
 export const bpIsMeasured = () => Date.now() - bpAt < 10_000;
+let tempAt = 0;
+/** True while a wearable sends a real temperature, so the mock steps aside. */
+export const tempIsMeasured = () => Date.now() - tempAt < 10_000;
 
 /**
  * Pulse transit time: chest R peak → wrist pulse peak, both moved to phone time with each link's clock offset.
@@ -41,7 +57,11 @@ function pulseArrived(p: number, onM: (m: Metrics) => void) {
  * - head band CSV, 8 columns: IMU + BPM + SpO2 computed on the ESP32.
  * `kind` reports which wearable this link turned out to be, once, from its first valid line.
  */
-export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => void = () => {}, toPhone?: () => ((espMs: number) => number) | null) {
+export function vitalsDecoder(emit: (m: Metrics) => void, kind: (d: Device) => void = () => {}, toPhone?: () => ((espMs: number) => number) | null) {
+  const onM = (m: Metrics) => {
+    if (hrPaused) delete m.hr;
+    if (Object.keys(m).length) emit(m);
+  };
   const lines = new LineBuffer();
   const hr = new HeartRate();
   const ppg = new PulseWave();
@@ -83,6 +103,8 @@ export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => vo
       if (head) {
         seen('band');
         const now = Date.now(); // no device clock in this format
+        // shortcut: phone arrival time; BLE batching can bunch lines, upgrade if the head band gains a timestamp column
+        imuListener?.(now, head.accel, 'band');
         if (now - lastEmit < EMIT_MS) continue;
         lastEmit = now;
         const m: Metrics = {};
@@ -94,6 +116,11 @@ export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => vo
       const sample = parseSensorLine(line);
       if (!sample) continue;
       seen('vest');
+      if (sample.accel) imuListener?.(sample.t, sample.accel, 'vest');
+      if (line.split(',').length === 12 && line.split(',')[5] !== '' && Date.now() - imuLogAt > 5000) {
+        imuLogAt = Date.now();
+        console.log('[imu] chaleco', sample.accel ? 'ok' : 'SIN accel', line.trim()); // every 5 s: did the IMU columns parse?
+      }
       if (sample.t < lastTrace || sample.t - lastTrace >= TRACE_MS) {
         lastTrace = sample.t;
         pushEcg(sample.ecg, sample.leadsOn);
@@ -104,7 +131,7 @@ export function vitalsDecoder(onM: (m: Metrics) => void, kind: (d: Device) => vo
       if (hr.lastPeak != null && hr.lastPeak !== r && map) lastR = map(hr.lastPeak);
       // Raw surface temperature; statusOf treats < 30 °C as "not on the body" instead of hypothermia.
       // shortcut: no skin→core offset yet, calibrate once the sensor sits on the body.
-      if (sample.temp != null) temp = sample.temp;
+      if (sample.temp != null) { temp = sample.temp; tempAt = Date.now(); }
       if (sample.t < lastEmit) lastEmit = sample.t; // ESP32 rebooted
       if (sample.t - lastEmit < EMIT_MS) continue;
       lastEmit = sample.t;

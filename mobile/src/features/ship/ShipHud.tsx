@@ -8,6 +8,7 @@ import { color, figureFont, font, radius, STATUS_LABEL } from '../../theme';
 import { Creature } from '../pet/Creature';
 import { petMood } from '../../domain/derive';
 import { usePetChat } from '../pet/usePetChat';
+import { PhotoButton } from '../camera/PhotoButton';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { SosButton } from '../../components/ui/SosButton';
@@ -29,7 +30,7 @@ const LINKS = [
 
 /** Modo nave (horizontal, en la manga): tres columnas [vitales 2fr][protocolo 1.2fr][acciones 0.8fr], sin scroll, texto blanco sobre negro. */
 export function ShipHud() {
-  const { metrics, devices, hubOnline, protocols, done, checked, checkins, history } = useStore();
+  const { metrics, devices, hubOnline, protocols, done, checked, checkins, history, care } = useStore();
   const ecg = useEcg(true);
   const insets = useSafeAreaInsets();
   const [col3, setCol3] = useState(180);
@@ -96,9 +97,10 @@ export function ShipHud() {
         </View>
         <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
           <Press label={talking ? 'Cerrar chat con Orbi' : 'Hablar con Orbi'} haptic="light" onPress={() => setTalking((t) => !t)} style={{ height: 40, paddingLeft: 4, paddingRight: 12, borderRadius: radius.full, backgroundColor: talking ? color.accent : color.surface, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 32, height: 32 }}><Creature size={32} mood={petMood(metrics, checkins[checkins.length - 1])} /></View>
+            <View style={{ width: 32, height: 32 }}><Creature size={32} mood={petMood(metrics, checkins[checkins.length - 1], care)} /></View>
             <Text style={font('small', talking ? color.onAccent : color.accentText)}>{talking ? 'Cerrar' : 'Hablar'}</Text>
           </Press>
+          <PhotoButton size={40} />
           {LINKS.map((l) => (
             // ok grey and faint grey are near-identical, so a lost link also changes glyph and dims.
             <View key={l.key} style={{ alignItems: 'center', gap: 2, opacity: connected[l.key] ? 1 : 0.5 }} accessibilityLabel={`${l.label} ${connected[l.key] ? 'conectada' : 'sin conexión'}`}>

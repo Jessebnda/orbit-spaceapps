@@ -12,7 +12,7 @@ export class LlmOffline extends Error {
 }
 
 export interface ToolCall { id: string; type: 'function'; function: { name: string; arguments: string } }
-export interface ChatMsg { role: 'system' | 'user' | 'assistant' | 'tool'; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
+export interface ChatMsg { role: 'system' | 'user' | 'assistant' | 'tool'; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string; /** The model's thinking, only when asked with think. */ reasoning?: string }
 
 let starting: Promise<void> | undefined;
 
@@ -51,18 +51,47 @@ export function ensureLLM(): Promise<void> {
   return starting;
 }
 
-export async function chat(messages: ChatMsg[], tools?: unknown[]): Promise<ChatMsg> {
+/** think: Qwen reasons first (shown to the captain); slower, so the pet chat keeps it off. */
+export async function chat(messages: ChatMsg[], tools?: unknown[], think = false, onThought?: (t: string) => void): Promise<ChatMsg> {
   let res: Response;
   try {
     res = await fetch(`${LLM_URL}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // no thinking: at ~9 tok/s on SSD-streamed experts, a hidden <think> block cost minutes per round
-      body: JSON.stringify({ messages, tools, temperature: 0.3, max_tokens: 900, chat_template_kwargs: { enable_thinking: false } }),
-      signal: AbortSignal.timeout(180_000), // the model streams experts from SSD and can be slow
+      // thinking costs minutes per round at ~9 tok/s on SSD-streamed experts, so it gets a bigger token and time budget
+      body: JSON.stringify({ stream: !!onThought, messages: messages.map(({ reasoning, ...m }) => m), tools, temperature: 0.3, max_tokens: think ? 2500 : 900, chat_template_kwargs: { enable_thinking: think } }),
+      signal: AbortSignal.timeout(think ? 420_000 : 180_000), // the model streams experts from SSD and can be slow
     });
   } catch { throw new LlmOffline(); }
   if (!res.ok) throw new Error(`LLM HTTP ${res.status}`);
-  const msg = (await res.json()).choices[0].message as ChatMsg;
-  return { ...msg, content: msg.content?.replace(/<think>[\s\S]*?<\/think>/g, '').trim() ?? null };
+  const msg = (onThought ? await readStream(res, onThought) : (await res.json()).choices[0].message) as ChatMsg & { reasoning_content?: string };
+  // llama.cpp returns the thinking as reasoning_content, or leaves <think> blocks inside content
+  const inline = [...(msg.content ?? '').matchAll(/<think>([\s\S]*?)<\/think>/g)].map((m) => m[1]).join('\n');
+  const reasoning = (msg.reasoning_content || inline).trim() || undefined;
+  return { role: msg.role, tool_calls: msg.tool_calls, content: msg.content?.replace(/<think>[\s\S]*?<\/think>/g, '').trim() ?? null, reasoning };
+}
+
+/** Rebuilds one chat message from llama.cpp's SSE deltas, handing each thinking piece to onThought as it arrives. */
+async function readStream(res: Response, onThought: (t: string) => void) {
+  const msg = { role: 'assistant' as const, content: '', reasoning_content: '', tool_calls: [] as ToolCall[] };
+  const dec = new TextDecoder();
+  let buf = '';
+  for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+    buf += dec.decode(chunk, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+      const d = JSON.parse(line.slice(6)).choices?.[0]?.delta ?? {};
+      if (d.reasoning_content) { msg.reasoning_content += d.reasoning_content; onThought(d.reasoning_content); }
+      if (d.content) msg.content += d.content;
+      for (const t of d.tool_calls ?? []) {
+        const c = (msg.tool_calls[t.index ?? 0] ??= { id: '', type: 'function', function: { name: '', arguments: '' } });
+        if (t.id) c.id = t.id;
+        if (t.function?.name) c.function.name += t.function.name;
+        if (t.function?.arguments) c.function.arguments += t.function.arguments;
+      }
+    }
+  }
+  return { ...msg, tool_calls: msg.tool_calls.length ? msg.tool_calls : undefined };
 }

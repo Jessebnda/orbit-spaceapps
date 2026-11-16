@@ -34,12 +34,12 @@ export function parseSensorLine(line: string): SensorSample | null {
   // Electrodes off: the firmware sends "nan" for the filtered ECG. Keep the line for IMU/temp, mark the ECG unusable.
   const ecgOk = ecg != null && Number.isFinite(ecg);
   const out: SensorSample = { t: us ? t / 1000 : t, ecgRaw, ecg: ecgOk ? ecg : 0, leadsOn: leads === 1 && ecgOk };
+  // Each sensor on its own: a missing GY-906 sends temp "nan" and must not drop the IMU (and vice versa).
   const v = c.slice(4, 11).map(num);
-  if (v.length === 7 && v.every((x) => x != null && Number.isFinite(x))) {
-    out.angle = { x: v[0]!, y: v[1]!, z: v[2]! };
-    out.accel = { x: v[3]!, y: v[4]!, z: v[5]! };
-    out.temp = v[6]!;
-  }
+  const ok = (...xs: (number | null | undefined)[]) => xs.every((x) => x != null && Number.isFinite(x));
+  if (ok(v[0], v[1], v[2])) out.angle = { x: v[0]!, y: v[1]!, z: v[2]! };
+  if (ok(v[3], v[4], v[5])) out.accel = { x: v[3]!, y: v[4]!, z: v[5]! };
+  if (ok(v[6])) out.temp = v[6]!;
   return out;
 }
 

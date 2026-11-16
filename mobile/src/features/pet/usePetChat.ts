@@ -18,6 +18,7 @@ export function usePetChat() {
     setBusy(true);
     setError(null);
     useStore.getState().addChat({ from: 'me', text: t, ts: Date.now() });
+    useStore.getState().careFor('talked');
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const deadline = new Promise<string>((_, reject) => {

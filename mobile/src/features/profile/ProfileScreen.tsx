@@ -11,6 +11,7 @@ import { FormSection } from '../../components/ui/FormSection';
 import { useNavigation } from '@react-navigation/native';
 import { AchievementsGrid } from './AchievementsGrid';
 import { ExplorationLog } from './ExplorationLog';
+import { CrewAlbum } from './CrewAlbum';
 import { InsightCard } from './InsightCard';
 
 const initials = (n: string) => n.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -73,6 +74,8 @@ export function ProfileScreen() {
         </Section>
 
         <ExplorationLog />
+
+        <CrewAlbum />
 
         <Section title="Comunicación">
           <FormSection>

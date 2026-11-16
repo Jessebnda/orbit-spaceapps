@@ -6,6 +6,7 @@ import { decide, raiseDecisions, type Decision } from '../domain/rules';
 import { send, sendProtocol, resolveEmergency, toCaptains } from '../services/hub';
 import { ackProtocol, saveCheckin, saveComms, saveCrew, saveEmergency, saveStat, saveVitals } from '../services/store';
 import { petReply } from '../services/agent';
+import { savePhoto } from '../services/photos';
 
 /** Carries out the rules' decisions: sends to phones and captains, stores in the DB. */
 function execute(ds: Decision[]) {
@@ -94,6 +95,15 @@ export function onConnection(ws: WebSocket) {
         case 'sos': { if (crews.has(msg.crewId)) execute(raiseDecisions(msg.crewId, msg.kind, envOf(now))); return; }
         case 'protocol_ack': { ackProtocol(msg.crewId, msg.protocolId); return; }
         case 'resolve': { resolveEmergency(msg.emergencyId); return; }
+        case 'photo': {
+          const c = crews.get(msg.crewId); if (!c) return;
+          const p = savePhoto(msg.crewId, msg.ts, msg.jpeg, c.snap.member.name);
+          if (!p) return;
+          console.log('[hub] foto', p.id);
+          toCaptains({ t: 'photo', photo: p });
+          for (const x of crews.values()) send(x.ws, { t: 'photo', photo: p }); // albums refresh now, not on their next poll
+          return;
+        }
       }
     } catch (e) {
       console.error('[ws] handler error', e);

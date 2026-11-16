@@ -101,6 +101,12 @@ export function AssistantScreen() {
             <div key={i} className="flex gap-3">
               <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-raised"><Monogram size={16} /></span>
               <div className="min-w-0 max-w-[64ch] flex-1 space-y-3">
+                {m.reasoning && (
+                  <details className="t-small rounded-md bg-surface px-3 py-2 text-muted">
+                    <summary className="cursor-pointer select-none">Razonamiento</summary>
+                    <p className="mt-2 whitespace-pre-wrap">{m.reasoning}</p>
+                  </details>
+                )}
                 <Markdown>{m.content}</Markdown>
                 {m.actions && m.actions.length > 0 && (
                   <ul className="space-y-1.5">
@@ -127,7 +133,12 @@ export function AssistantScreen() {
           <div className="flex gap-3" role="status">
             <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-raised"><Monogram size={16} /></span>
             <div className="flex-1">
-              <div className="space-y-2">{[100, 85, 55].map((w) => <div key={w} className="skeleton h-3 rounded-full" style={{ width: `${w}%` }} />)}</div>
+              {chat.live?.trim() ? (
+                // live thinking, newest at the bottom; capped height so the input stays on screen
+                <p className="t-small max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface px-3 py-2 text-muted">{chat.live.trim()}</p>
+              ) : (
+                <div className="space-y-2">{[100, 85, 55].map((w) => <div key={w} className="skeleton h-3 rounded-full" style={{ width: `${w}%` }} />)}</div>
+              )}
               <p className="t-small mt-3 flex items-center gap-2 text-muted">
                 Pensando… {chat.elapsed} s · puede tardar 2–3 min
                 <button type="button" onClick={chat.cancel} className="mac-btn !h-7 !px-2.5"><Square size={10} aria-hidden />Cancelar</button>

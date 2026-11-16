@@ -10,7 +10,7 @@ import { HubError, START_CMD, api } from "@/lib/services/hub";
 // move the job to the hub and poll it if that matters.
 
 const KEY = "orbit.assistant.chat";
-type State = { messages: ChatMsg[]; busy: boolean; startedAt: number; error?: string };
+type State = { messages: ChatMsg[]; busy: boolean; startedAt: number; error?: string; live?: string };
 const EMPTY: State = { messages: [], busy: false, startedAt: 0 };
 
 let state = EMPTY;
@@ -41,21 +41,26 @@ async function send(text: string) {
   set({ messages: next, busy: true, startedAt: Date.now(), error: undefined });
   const ac = new AbortController();
   abort = ac;
+  // the answer arrives in one piece; meanwhile show the model's thinking as it writes it
+  const poll = setInterval(() => {
+    api<{ text: string }>("/api/assistant/live").then((r) => { if (abort === ac) set({ live: r.text }); }).catch(() => {});
+  }, 1500);
   try {
-    const res = await api<{ reply: string; actions: Action[] }>("/api/assistant", {
+    const res = await api<{ reply: string; actions: Action[]; reasoning?: string }>("/api/assistant", {
       method: "POST",
       body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
       signal: ac.signal,
     });
     if (abort !== ac) return; // the chat was reset while this was loading
-    set({ messages: [...state.messages, { role: "assistant", content: res.reply, actions: res.actions }] });
+    set({ messages: [...state.messages, { role: "assistant", content: res.reply, actions: res.actions, reasoning: res.reasoning }] });
   } catch (err) {
     if (abort !== ac) return;
     if (ac.signal.aborted) set({ error: "Cancelado." });
     else if (err instanceof HubError && err.status === 503) set({ error: `El asistente no está en línea. Inícialo con ${START_CMD}` });
     else set({ error: err instanceof Error ? err.message : "Error al consultar el asistente" });
   } finally {
-    if (abort === ac) { abort = null; set({ busy: false }); }
+    clearInterval(poll);
+    if (abort === ac) { abort = null; set({ busy: false, live: undefined }); }
   }
 }
 
@@ -78,5 +83,5 @@ export function useChat() {
     return () => clearInterval(id);
   }, [s.busy]);
   const elapsed = s.busy ? Math.max(0, Math.floor((now - s.startedAt) / 1000)) : 0;
-  return { messages: s.messages, busy: s.busy, elapsed, error: s.error, send, reset, cancel: () => abort?.abort() };
+  return { messages: s.messages, busy: s.busy, live: s.live, elapsed, error: s.error, send, reset, cancel: () => abort?.abort() };
 }

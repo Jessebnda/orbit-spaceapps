@@ -22,5 +22,5 @@ export function useApi<T>(path: string, pollMs = 0) {
     const id = setInterval(load, pollMs);
     return () => clearInterval(id);
   }, [load, pollMs]);
-  return { data, error };
+  return { data, error, reload: load };
 }

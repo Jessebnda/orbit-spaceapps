@@ -4,9 +4,10 @@ import { PROTOCOLS } from '../domain/protocols';
 import { DAY, allSnaps, commsLog, commsOf, crews, emergencies, snapshotOf, statLog } from '../domain/state';
 import { commsText, historyText, insightsText, overviewText } from '../domain/context';
 import { isObj, isStr } from '../domain/validate';
-import { ask, type AgentCtx } from '../services/agent';
+import { ask, liveThought, type AgentCtx } from '../services/agent';
 import { LlmOffline, ensureLLM, llmState } from '../services/llm';
 import { resolveEmergency, sendProtocol } from '../services/hub';
+import { listPhotos, photoBytes } from '../services/photos';
 import { daySummaries, vitalsSince } from '../services/store';
 
 class HttpError extends Error {
@@ -67,8 +68,10 @@ async function route(method: string, path: string, q: URLSearchParams, body: any
     if (path === '/api/snapshot') return { crew: allSnaps(now), emergencies };
     if (path === '/api/leaderboard') return leaderboard();
     if (path === '/api/explorations') return explorations();
+    if (path === '/api/photos') return listPhotos(nameOf);
     if (path === '/api/protocols') return PROTOCOLS;
     if (path === '/api/llm') return { state: await llmState() };
+    if (path === '/api/assistant/live') return { text: liveThought };
     if (path.startsWith('/api/history/')) return history(crewParam(), Number(q.get('hours') ?? 24));
     if (path.startsWith('/api/comms/')) {
       const id = crewParam();
@@ -136,6 +139,11 @@ export async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'OPTIONS') return void res.writeHead(204).end();
   try {
     const url = new URL(req.url ?? '/', 'http://hub');
+    const img = req.method === 'GET' && url.pathname.match(/^\/api\/photos\/(.+)\.jpg$/);
+    if (img) {
+      const bytes = photoBytes(img[1]);
+      return void (bytes ? res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' }).end(bytes) : res.writeHead(404).end());
+    }
     const body = req.method === 'POST' ? await readJson(req) : {};
     if (req.method === 'POST' && url.pathname === '/api/assistant') return void (await longPoll(res, () => route('POST', url.pathname, url.searchParams, body)));
     const out = await route(req.method ?? 'GET', url.pathname, url.searchParams, body); // before writeHead: a throw must still get its status

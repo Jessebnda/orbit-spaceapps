@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { THRESHOLDS, type CheckIn, type CrewMember, type CrewSnapshot, type Device, type Emergency, type MetricKey, type Metrics, type Protocol, type Proximity } from '@orbit/shared';
 import { ENV } from '../config/env';
-import { dayKey } from '../domain/derive';
+import { type Care, careStep, dayKey, halfCare } from '../domain/derive';
 import type { DayStat, Stats } from './types';
 
 export type DataSource = 'sim' | 'ble';
@@ -30,6 +30,10 @@ type State = {
   emergency: Emergency | null;
   activeSession: string | null;
   toast: string | null;
+  /** A BLE camera ("esp cabeza") is connected; not persisted. */
+  camera: boolean;
+  /** Bumped when the hub announces a new album photo. */
+  photoAt: number;
   brain: Brain;
   /** Persisted, one sample per minute, capped at 24 h. */
   history: Sample[];
@@ -43,6 +47,7 @@ type State = {
   unlocked: string[];
   chat: ChatMsg[];
   sessions: Session[];
+  care: Care;
 
   setProfile: (p: Partial<Profile>) => void;
   setHubUrl: (u: string) => void;
@@ -71,24 +76,29 @@ type State = {
   setActiveSession: (id: string | null) => void;
   unlock: (ids: string[]) => void;
   showToast: (text: string | null) => void;
+  careFor: (k: keyof Care) => void;
 };
 
 /** Only these reach AsyncStorage. `metrics`, `peers`, `self`, `emergency` stay in memory. */
-type Persisted = Pick<State, 'profile' | 'missionStart' | 'hubUrl' | 'dataSource' | 'history' | 'days' | 'checkins' | 'protocols' | 'done' | 'checked' | 'stats' | 'explorations' | 'unlocked' | 'chat' | 'sessions' | 'crew'>;
+type Persisted = Pick<State, 'profile' | 'missionStart' | 'hubUrl' | 'dataSource' | 'history' | 'days' | 'checkins' | 'protocols' | 'done' | 'checked' | 'stats' | 'explorations' | 'unlocked' | 'chat' | 'sessions' | 'crew' | 'care'>;
 
 // Writes are debounced and skipped when unchanged, so the 2 s vitals stream never reaches disk.
 let pendingWrite: ReturnType<typeof setTimeout> | null = null;
 let lastWritten = '';
+let latest = '';
 const debouncedStorage = {
-  getItem: (k: string) => AsyncStorage.getItem(k),
-  removeItem: (k: string) => AsyncStorage.removeItem(k),
+  // Safari with "Block All Cookies" throws on localStorage: hydrate empty instead of never starting the app.
+  getItem: (k: string) => Promise.resolve().then(() => AsyncStorage.getItem(k)).catch(() => null),
+  removeItem: (k: string) => Promise.resolve().then(() => AsyncStorage.removeItem(k)).catch(() => {}),
+  // Throttle, not debounce: vitals change the store every 2 s, so a 3 s debounce never fired and nothing was saved.
   setItem: (k: string, v: string) => {
-    if (pendingWrite) clearTimeout(pendingWrite);
+    latest = v;
+    if (pendingWrite) return;
     pendingWrite = setTimeout(() => {
       pendingWrite = null;
-      if (v === lastWritten) return;
-      lastWritten = v;
-      AsyncStorage.setItem(k, v).catch(() => {});
+      if (latest === lastWritten) return;
+      lastWritten = latest;
+      Promise.resolve().then(() => AsyncStorage.setItem(k, latest)).catch(() => {});
     }, 3000);
   },
 };
@@ -106,7 +116,7 @@ const sanitize = (m: Metrics): Metrics => {
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
-      profile: { crewId: 'c1', name: 'Tripulante', role: 'Especialista' },
+      profile: ENV.crewName ? { crewId: ENV.crewName.toLowerCase(), name: ENV.crewName, role: 'Especialista' } : { crewId: 'c1', name: 'Tripulante', role: 'Especialista' },
       missionStart: Date.now(),
       hubUrl: ENV.hubUrl,
       dataSource: 'sim',
@@ -119,6 +129,8 @@ export const useStore = create<State>()(
       emergency: null,
       activeSession: null,
       toast: null,
+      camera: false,
+      photoAt: 0,
       brain: { status: 'none', progress: 0 },
       history: [],
       days: {},
@@ -131,6 +143,7 @@ export const useStore = create<State>()(
       unlocked: [],
       chat: [],
       sessions: [],
+      care: halfCare(),
 
       setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
       setHubUrl: (hubUrl) => set({ hubUrl }),
@@ -184,17 +197,24 @@ export const useStore = create<State>()(
       setActiveSession: (activeSession) => set({ activeSession }),
       unlock: (ids) => set((s) => ({ unlocked: [...s.unlocked, ...ids.filter((i) => !s.unlocked.includes(i))] })),
       showToast: (toast) => set({ toast }),
+      careFor: (k) => set((s) => ({ care: { ...s.care, [k]: careStep(s.care, k) } })),
     }),
     {
       name: 'orbit_v1',
       // Bump to push a new build-time hub URL over the one saved on the phone; later edits in Ajustes stick.
-      version: 2,
-      migrate: (s) => ({ ...(s as Persisted), hubUrl: ENV.hubUrl }),
+      version: 5,
+      // v3, v4: Orbi's needs reset to 50 % so the care loop starts with something to do.
+      // v5: a build with EXPO_PUBLIC_CREW_NAME renames the phone that installs it.
+      migrate: (s, v) => {
+        const p = s as Persisted;
+        const named = ENV.crewName ? { profile: { ...p.profile, crewId: ENV.crewName.toLowerCase(), name: ENV.crewName } } : {};
+        return { ...p, hubUrl: ENV.hubUrl, ...(v < 4 ? { care: halfCare() } : {}), ...named };
+      },
       storage: createJSONStorage(() => debouncedStorage),
       partialize: (s): Persisted => ({
         profile: s.profile, missionStart: s.missionStart, hubUrl: s.hubUrl, dataSource: s.dataSource, history: s.history, days: s.days,
         checkins: s.checkins, protocols: s.protocols, done: s.done, checked: s.checked, stats: s.stats,
-        explorations: s.explorations, unlocked: s.unlocked, chat: s.chat, sessions: s.sessions, crew: s.crew,
+        explorations: s.explorations, unlocked: s.unlocked, chat: s.chat, sessions: s.sessions, crew: s.crew, care: s.care,
       }),
     },
   ),

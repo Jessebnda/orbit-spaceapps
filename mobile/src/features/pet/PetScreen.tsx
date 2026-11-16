@@ -9,20 +9,28 @@ import { Card, FormSection } from '../../components/ui/FormSection';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { Press } from '../../components/ui/Press';
 import { FeedRow } from '../../components/ui/FeedRow';
-import { petMood, petNeeds, type PetMood } from '../../domain/derive';
+import { careLevels, needsTalk, petMood, type Care, type PetMood } from '../../domain/derive';
 import { Creature, PET_COLORS, PET_SHAPES, type PetColor, type PetShape } from './Creature';
 
 const FLUSH_EVERY_S = 15;
-const NEEDS: { key: 'food' | 'rest' | 'mood'; label: string; icon: IconName }[] = [
-  { key: 'food', label: 'Alimento', icon: 'fork.knife' },
-  { key: 'rest', label: 'Descanso', icon: 'moon.zzz.fill' },
-  { key: 'mood', label: 'Ánimo', icon: 'face.smiling' },
+const NEEDS: { key: keyof Care; label: string; icon: IconName }[] = [
+  { key: 'fed', label: 'Alimento', icon: 'fork.knife' },
+  { key: 'petted', label: 'Cariño', icon: 'heart.fill' },
+  { key: 'talked', label: 'Compañía', icon: 'bubble.left.fill' },
 ];
 const THOUGHT: Record<PetMood, string> = {
   happy: '¿Cómo va tu día?',
   tired: 'Hoy dormiste poco. ¿Respiramos un minuto?',
   sad: 'Aquí estoy. ¿Quieres contarme cómo va el día?',
 };
+/** What Orbi asks for first: a low day you haven't talked through, then its own emptiest need. */
+function thought(mood: PetMood, talk: boolean, lv: Record<keyof Care, number>) {
+  if (talk) return 'Te noto bajo de ánimo y yo también me siento así. ¿Hablamos un rato?';
+  if (lv.fed < 0.25) return 'Tengo hambre…';
+  if (lv.petted < 0.25) return '¿Me haces un cariño?';
+  if (lv.talked < 0.25) return 'Hace mucho que no platicamos.';
+  return THOUGHT[mood];
+}
 /** Shape and colour pickers: each shape previewed as a small Orbi in the current colour. */
 function Customize() {
   const profile = useStore((s) => s.profile);
@@ -60,11 +68,11 @@ function Customize() {
 }
 
 /** Quiet portrait of Orbi: the character is the visual, not a decorative scene. */
-function Scene({ mood, onThought }: { mood: PetMood; onThought: () => void }) {
+function Scene({ mood, text, feeds, pets, onThought }: { mood: PetMood; text: string; feeds: number; pets: number; onThought: () => void }) {
   return <View style={{ backgroundColor: color.surface, borderRadius: radius.card, borderCurve: 'continuous', padding: 20, alignItems: 'center', gap: 12 }}>
-    <Creature size={170} mood={mood} interactive />
-    <Press label={THOUGHT[mood]} hint="Abre el chat" onPress={onThought} style={{ minHeight: 44, justifyContent: 'center' }}>
-      <Text style={[font('body', color.muted), { textAlign: 'center' }]}>{THOUGHT[mood]}</Text>
+    <Creature size={170} mood={mood} feeds={feeds} pets={pets} interactive onPoke={() => useStore.getState().careFor('petted')} />
+    <Press label={text} hint="Abre el chat" onPress={onThought} style={{ minHeight: 44, justifyContent: 'center' }}>
+      <Text style={[font('body', color.muted), { textAlign: 'center' }]}>{text}</Text>
     </Press>
   </View>;
 }
@@ -72,10 +80,22 @@ function Scene({ mood, onThought }: { mood: PetMood; onThought: () => void }) {
 export function PetScreen() {
   const nav = useNavigation<{ navigate: (n: string) => void }>();
   const focused = useIsFocused();
-  const { metrics, checkins, sessions } = useStore();
+  const { metrics, checkins, sessions, care } = useStore();
   const last = checkins[checkins.length - 1];
-  const mood = petMood(metrics, last);
-  const needs = petNeeds(metrics, last);
+  const mood = petMood(metrics, last, care);
+  const needs = careLevels(care);
+  const talk = needsTalk(last, care);
+  const [feeds, setFeeds] = useState(0);
+  const [pets, setPets] = useState(0);
+  const pet = () => {
+    setPets((n) => n + 1);
+    useStore.getState().careFor('petted');
+  };
+  const feed = () => {
+    if (needs.fed > 0.97) return useStore.getState().showToast('Orbi ya está lleno');
+    setFeeds((n) => n + 1);
+    setTimeout(() => useStore.getState().careFor('fed'), 650); // the bar rises when Orbi catches the snack
+  };
   const secs = useRef(0);
   const sinceFlush = useRef(0);
   const [picking, setPicking] = useState(false);
@@ -148,15 +168,23 @@ export function PetScreen() {
       <View style={{ paddingHorizontal: 16, gap: 32 }}>
         <View style={{ gap: 12 }}>
           <Text style={font('title')}>Tu compañero Orbi</Text>
-          <Text style={font('body', color.muted)}>Un espacio para hablar, hacer una pausa y seguir.</Text>
-          <Scene mood={mood} onThought={() => nav.navigate('Chat')} />
-          <Press label="Abrir chat con Orbi" onPress={() => nav.navigate('Chat')} style={{ minHeight: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, flexDirection: 'row', gap: 8, padding: 14, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={font('body', color.muted)}>Dale de comer, hazle cariño y platica con él. Si te ve triste, se pone triste contigo.</Text>
+          <Scene mood={mood} text={thought(mood, talk, needs)} feeds={feeds} pets={pets} onThought={() => nav.navigate('Chat')} />
+          <Press label={talk ? 'Hablar con Orbi' : 'Abrir chat con Orbi'} onPress={() => nav.navigate('Chat')} style={{ minHeight: 50, borderRadius: radius.lg, borderCurve: 'continuous', backgroundColor: color.accent, flexDirection: 'row', gap: 8, padding: 14, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="bubble.left.fill" size={20} color={color.onAccent} />
-            <Text style={font('button', color.onAccent)}>Escribir a Orbi</Text>
+            <Text style={font('button', color.onAccent)}>{talk ? 'Hablar con Orbi' : 'Escribir a Orbi'}</Text>
           </Press>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Press label="Dar de comer a Orbi" haptic="light" onPress={feed} style={{ flex: 1, height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.raised, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="fork.knife" size={16} color={color.accentText} />
+              <Text style={font('button', color.accentText)}>Dar de comer</Text>
+            </Press>
+            <Press label="Hacerle cariño a Orbi" onPress={pet} style={{ flex: 1, height: 44, borderRadius: radius.lg - 2, borderCurve: 'continuous', backgroundColor: color.raised, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="heart.fill" size={16} color={color.accentText} />
+              <Text style={font('button', color.accentText)}>Cariño</Text>
+            </Press>
+          </View>
         </View>
-
-        <Customize />
 
         {/* Needs as labelled meters on the page ground: not three centred icon-number tiles, not another card. */}
         <View style={{ gap: 14 }}>
@@ -176,6 +204,8 @@ export function PetScreen() {
             );
           })}
         </View>
+
+        <Customize />
 
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

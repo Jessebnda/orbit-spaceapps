@@ -1,7 +1,7 @@
 // Pure text for the LLM and for the hub's own answers. Labels come from @orbit/shared so the copy lives in one place.
 import {
   anomalyText, behaviorInsights, EMERGENCY_LABEL, formatMetric, METRIC_META, PROTOCOL_KIND_LABEL,
-  type CrewSnapshot, type DaySummary, type Emergency, type MetricKey, type Metrics, hardNewsActive } from '@orbit/shared';
+  type CrewSnapshot, type DaySummary, type Emergency, type MetricKey, type Metrics, hardNewsActive, petTips } from '@orbit/shared';
 
 const STATUS_ES = { ok: 'normal', watch: 'vigilar', critical: 'crítico' } as const;
 
@@ -15,7 +15,7 @@ export function crewLine(s: CrewSnapshot, nameOf: (id: string) => string): strin
     + `Métricas: ${metricsText(s.metrics)}. ${ci}. Hoy ${Math.round(s.comms.todayMin)} min de conversación. ${anomalies}`.trimEnd();
 }
 
-export const petContext = (s: CrewSnapshot) => crewLine(s, (id) => id);
+export const petContext = (s: CrewSnapshot) => `${crewLine(s, (id) => id)} ${petTips(s.lastCheckIn, s.metrics.sleep, hardNewsActive(s))}`.trimEnd();
 
 export function overviewText(snaps: CrewSnapshot[], emergencies: Emergency[]): string {
   const nameOf = (id: string) => snaps.find((s) => s.member.id === id)?.member.name ?? id;

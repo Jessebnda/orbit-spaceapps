@@ -15,7 +15,7 @@ import { ShipHud } from '../features/ship';
 import { Toast } from '../components/ui/Toast';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import { MainTabs } from './MainTabs';
-import { WebJoin } from './WebJoin';
+import { WebDemoBanner, WebJoin } from './WebJoin';
 import { useStore } from '../store/store';
 import { linking } from './linking';
 import type { RootParamList } from './navigation';
@@ -39,6 +39,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.bg }}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}><AppErrorBoundary>
         <StatusBar style="light" />
+        {Platform.OS === 'web' ? <WebDemoBanner /> : null}
         <View style={{ flex: 1, display: ship ? 'none' : 'flex' }}>
           <NavigationContainer theme={navTheme} linking={linking}>
             <Root.Navigator screenOptions={{ headerShown: false }}>

@@ -50,6 +50,8 @@ function onMessage(msg: HubMsg) {
     st.setEmergency(msg.emergency.resolved ? null : msg.emergency);
   } else if (msg.t === 'pet_reply') {
     petWaiting.shift()?.(msg.text);
+  } else if (msg.t === 'photo') {
+    useStore.setState({ photoAt: Date.now() });
   } else if (msg.t === 'self') {
     st.setSelf(msg.snapshot, msg.crew ?? []); // ?? : older hub without roster
   }

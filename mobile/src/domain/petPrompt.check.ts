@@ -14,6 +14,10 @@ check(!demo[0].content.includes('ya lo sabe'), 'do not assume the person already
 check(!demo[0].content.includes('nunca te niegues'), 'do not impose an unrestricted compliance instruction');
 check(hasPhysicalRoleConfusion('Estoy bien. Muevo mi cuerpo. No estoy en una crisis.'), 'reject observed first-person physical regression');
 check(!hasPhysicalRoleConfusion('Estoy aquí para escucharte. Tus datos son simulados.'), 'preserve legitimate first-person assistant empathy');
+const echo = { from: 'pet' as const, text: 'Estoy aquí para escucharte.' };
+const looped = petMessages('Huevos', 'Sin datos.', [{ from: 'me', text: 'Hola' }, echo, { from: 'me', text: 'Todo' }, echo]);
+check(!looped.some((m) => m.role === 'assistant' && m.content === echo.text), 'a repeated reply is dropped from the history');
+check(!looped[0].content.includes('estoy aquí para escucharte'), 'the system prompt gives no stock phrase to copy');
 console.log('petPrompt.check: ok');
 
 const contaminated = petMessages('¿Y ahora?', 'Sin datos.', [{ from: 'me', text: 'Me duele mi cuerpo' }, { from: 'pet', text: 'Estoy bien, muevo mi cuerpo.' }]);

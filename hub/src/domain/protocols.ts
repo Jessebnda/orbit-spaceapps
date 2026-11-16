@@ -38,9 +38,10 @@ export const PROTOCOLS: Protocol[] = [
     'Pide a un compañero que se quede contigo.',
     'Si dura más de 20 minutos o aparece dolor en el pecho, avisa al equipo médico.',
   ] },
-  { id: 'jumping_jacks', kind: 'physical', title: 'Ejercicio: saltos de tijera', durationMin: 5, guide: 'jumping_jacks', createdBy: 'rules', steps: [
+  { id: 'jumping_jacks', kind: 'physical', title: 'Ejercicio: saltos en el lugar', durationMin: 5, guide: 'jumping_jacks', createdBy: 'rules', steps: [
     'Sujétate en la zona de ejercicio con las correas.',
-    'Haz 5 minutos de saltos de tijera a un ritmo cómodo.',
+    'Ponte el chaleco (esp sensores, en el pecho): su IMU cuenta cada salto. Quédate quieto un segundo al pulsar Empezar.',
+    'Haz 5 minutos de saltos en el mismo lugar, con las manos quietas en la cintura (la banda de la mano casi no debe moverse).',
     'Anota los minutos en el registro de actividad.',
   ] },
   { id: 'hydrate', kind: 'physical', title: 'Hidratación', createdBy: 'rules', steps: [
