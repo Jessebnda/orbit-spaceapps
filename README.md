@@ -229,6 +229,18 @@ Space agency partner and other sources:
 
 Next we want to align thresholds with NASA-STD-3001, move the body network to ESP-NOW with LoRa repeaters across the habitat, add a radiation dose sensor, and test ORBIT in a space analog habitat.
 
+## Beyond space
+
+Nothing in ORBIT is tied to our vest. The hub accepts vitals from any source, so data exported from an Apple Watch, a Fitbit or any other wearable could feed the same rules, protocols and assistant. And because the assistant answers from NASA's research on isolation, confinement and behavioral health, which applies to anyone who lives far from help, the same system works wherever people are isolated and offline:
+
+- Antarctic and Arctic research stations, submarines, offshore platforms and remote mines
+- Expeditions, ships at sea and military deployments
+- Rural clinics and communities without reliable internet
+- Older adults who live alone, and their families or caregivers
+- Remote and night-shift workers
+
+Everything runs on a phone and a laptop with no internet, so it could be deployed in any of these places tomorrow.
+
 ## Tools
 
 TypeScript across the stack · React Native with Expo (iOS, Android, web) · Next.js and Tailwind (dashboard) · Node with WebSockets (hub) · PostgreSQL with pgvector, optional Supabase · llama.cpp fork with MoE expert streaming and Qwen3.8 Flash Next (on-board AI), transformers.js embeddings, llama.rn with Bonsai-4B on the phone · ESP32 and XIAO ESP32-C3 with Arduino (ECG module, MPU6050, GY-906, WS2812 LEDs) · SolidWorks enclosures (STL and STEP), 3D printed in PLA.
